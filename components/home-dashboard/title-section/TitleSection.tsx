@@ -1,0 +1,29 @@
+"use client"
+
+import { cn } from "@/lib/utils"
+
+type TitleSectionProps = {
+  title?: string
+  subtitle?: string
+  className?: string
+}
+
+export default function TitleSection({
+  title = "CrackInt",
+  subtitle = "Your AI-powered job preparation assistant",
+  className,
+}: TitleSectionProps) {
+  return (
+    <section
+      className={cn(
+        "rounded-xl bg-card px-4 text-card-foreground flex flex-col gap-2 items-center py-32",
+        className
+      )}
+    >
+      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      {subtitle && (
+        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+      )}
+    </section>
+  )
+}

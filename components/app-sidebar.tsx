@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { SearchForm } from "@/components/search-form"
+import { SidebarFooter } from "@/components/sidebar/SidebarFooter"
 import { VersionSwitcher } from "@/components/version-switcher"
 import {
   Sidebar,
@@ -67,6 +68,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroup>
         ))}
       </SidebarContent>
+      <SidebarFooter />
       <SidebarRail />
     </Sidebar>
   )

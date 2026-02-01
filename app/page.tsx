@@ -14,6 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import HomeView from "@/components/home-dashboard/HomeView"
+import { ModeToggle } from "@/components/common/ModeToggler"
 
 export default function Page() {
   return (
@@ -39,6 +40,11 @@ export default function Page() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+
+
+          <div className="ml-auto">
+            <ModeToggle />
+          </div>
         </header>
         <HomeView />
       </SidebarInset>

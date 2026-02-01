@@ -16,7 +16,7 @@ export default function TitleSection({
   return (
     <section
       className={cn(
-        "rounded-xl bg-card px-4 text-card-foreground flex flex-col gap-2 items-center sm:py-32 py-16",
+        "rounded-xl px-4 text-card-foreground flex flex-col gap-2 items-center sm:py-32 py-16",
         className
       )}
     >

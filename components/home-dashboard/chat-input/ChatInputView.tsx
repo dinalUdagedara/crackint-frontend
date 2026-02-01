@@ -13,7 +13,7 @@ export default function ChatInputView({
   onSend,
 }: ChatInputViewProps) {
   return (
-    <section
+    <footer
       className={cn(
         "shrink-0 border-t border-border bg-muted/30 px-4 py-3",
         className
@@ -22,6 +22,6 @@ export default function ChatInputView({
       <div className="mx-auto max-w-3xl">
         <ChatInput placeholder="Type message" onSend={onSend} />
       </div>
-    </section>
+    </footer>
   )
 }

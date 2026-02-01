@@ -4,6 +4,7 @@ import Link from "next/link"
 import {
   Briefcase,
   FileCheck,
+  FileUp,
   LogOut,
   Trash2,
   User,
@@ -18,6 +19,7 @@ import {
 const footerItems = [
   { title: "Clear conversations", href: "#", icon: Trash2 },
   { title: "CV Checker", href: "#", icon: FileCheck },
+  { title: "CV Upload", href: "/cv-upload", icon: FileUp },
   { title: "My account", href: "#", icon: User },
   { title: "Job Tracker", href: "#", icon: Briefcase },
   { title: "Log out", href: "#", icon: LogOut },

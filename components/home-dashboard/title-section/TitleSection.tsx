@@ -20,9 +20,9 @@ export default function TitleSection({
         className
       )}
     >
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">{title}</h1>
       {subtitle && (
-        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+        <p className="mt-1 text-sm sm:text-base text-muted-foreground">{subtitle}</p>
       )}
     </section>
   )

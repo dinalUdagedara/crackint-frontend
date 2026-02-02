@@ -1,7 +1,12 @@
-import type { ApiResponse, ResumeExtractPayload } from "@/types/api.types"
+import type {
+  ApiResponse,
+  Resume,
+  ResumeExtractResult,
+  ResumeListPayload,
+} from "@/types/api.types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
-const RESUMES_EXTRACT_URL = `${API_BASE}/api/v1/resumes/extract`
+const RESUMES_BASE = `${API_BASE}/api/v1/resumes`
 
 export class ResumeUploadError extends Error {
   constructor(
@@ -29,7 +34,7 @@ async function parseResponse<T>(res: Response): Promise<ApiResponse<T>> {
 /** Extract resume entities from a PDF file. Backend accepts PDF only. */
 export async function extractResumeFromFile(
   file: File
-): Promise<ApiResponse<ResumeExtractPayload>> {
+): Promise<ApiResponse<ResumeExtractResult>> {
   if (file.type !== "application/pdf") {
     throw new ResumeUploadError(
       "Only PDF files are supported for upload. Please paste your CV text instead."
@@ -39,18 +44,18 @@ export async function extractResumeFromFile(
   const formData = new FormData()
   formData.append("file", file)
 
-  const res = await fetch(RESUMES_EXTRACT_URL, {
+  const res = await fetch(`${RESUMES_BASE}/extract`, {
     method: "POST",
     body: formData,
   })
 
-  return parseResponse<ResumeExtractPayload>(res)
+  return parseResponse<ResumeExtractResult>(res)
 }
 
 /** Extract resume entities from raw text. */
 export async function extractResumeFromText(
   text: string
-): Promise<ApiResponse<ResumeExtractPayload>> {
+): Promise<ApiResponse<ResumeExtractResult>> {
   const trimmed = text.trim()
   if (!trimmed) {
     throw new ResumeUploadError("Please enter some CV text to extract.")
@@ -59,10 +64,45 @@ export async function extractResumeFromText(
   const formData = new FormData()
   formData.append("text", trimmed)
 
-  const res = await fetch(RESUMES_EXTRACT_URL, {
+  const res = await fetch(`${RESUMES_BASE}/extract`, {
     method: "POST",
     body: formData,
   })
 
-  return parseResponse<ResumeExtractPayload>(res)
+  return parseResponse<ResumeExtractResult>(res)
+}
+
+/** Update resume entity fields (PATCH). */
+export async function updateResumeEntities(
+  resumeId: string,
+  entities: Record<string, string[]>
+): Promise<ApiResponse<Resume>> {
+  const res = await fetch(`${RESUMES_BASE}/${resumeId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entities }),
+  })
+  return parseResponse<Resume>(res)
+}
+
+/** List all resumes with pagination. */
+export async function listResumes(
+  page = 1,
+  pageSize = 20,
+  userId?: string
+): Promise<ApiResponse<ResumeListPayload>> {
+  const params = new URLSearchParams()
+  params.set("page", String(page))
+  params.set("page_size", String(pageSize))
+  if (userId) params.set("user_id", userId)
+  const res = await fetch(`${RESUMES_BASE}?${params}`)
+  return parseResponse<ResumeListPayload>(res)
+}
+
+/** Delete all resumes. */
+export async function deleteAllResumes(): Promise<
+  ApiResponse<{ deleted_count: number }>
+> {
+  const res = await fetch(RESUMES_BASE, { method: "DELETE" })
+  return parseResponse<{ deleted_count: number }>(res)
 }

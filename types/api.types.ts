@@ -25,3 +25,19 @@ export interface ResumeExtractPayload {
   entities: Record<string, string[]>;
   raw_text: string | null;
 }
+
+/** Full resume from API (persisted) */
+export interface Resume {
+  id: string;
+  user_id: string | null;
+  entities: Record<string, string[]>;
+  raw_text: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Payload from POST extract - may include id if persisted */
+export type ResumeExtractResult = ResumeExtractPayload & Partial<Pick<Resume, "id" | "user_id" | "created_at" | "updated_at">>;
+
+/** Response payload for GET /resumes - array of resumes */
+export type ResumeListPayload = Resume[];

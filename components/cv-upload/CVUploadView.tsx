@@ -1,15 +1,16 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { FileUp, Loader2 } from "lucide-react"
+import { FileUp, Loader2, Pencil } from "lucide-react"
 import CVFileDropZone from "./CVFileDropZone"
 import CVPasteArea from "./CVPasteArea"
+import { EditEntitiesDialog } from "./EditEntitiesDialog"
 import {
   extractResumeFromFile,
   extractResumeFromText,
   ResumeUploadError,
 } from "@/services/resume-uploader.service"
-import type { ResumeExtractPayload } from "@/types/api.types"
+import type { Resume, ResumeExtractResult } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -32,14 +33,28 @@ const ENTITY_LABELS: Record<string, string> = {
   EXPERIENCE: "Experience",
 }
 
+function toResume(result: ResumeExtractResult): Resume | null {
+  if (!result.id) return null
+  return {
+    id: result.id,
+    user_id: result.user_id ?? null,
+    entities: result.entities ?? {},
+    raw_text: result.raw_text ?? null,
+    created_at: result.created_at ?? new Date().toISOString(),
+    updated_at: result.updated_at ?? new Date().toISOString(),
+  }
+}
+
 function ExtractedEntitiesCard({
   payload,
   onReplace,
+  onEdit,
 }: {
-  payload: ResumeExtractPayload
+  payload: ResumeExtractResult
   onReplace: () => void
+  onEdit?: () => void
 }) {
-  const entities = payload.entities
+  const entities = payload.entities ?? {}
   const entries = Object.entries(entities).filter(
     ([_, values]) => values && values.length > 0
   )
@@ -48,12 +63,21 @@ function ExtractedEntitiesCard({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-3">
-
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-medium text-foreground">
               Extracted information
             </h3>
-
+            {onEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onEdit}
+                className="shrink-0"
+              >
+                <Pencil className="size-4" />
+                Edit
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -65,22 +89,27 @@ function ExtractedEntitiesCard({
             </Button>
           </div>
 
-
-
           {entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No entities were extracted from your CV.
             </p>
           ) : (
             <div className="rounded-lg border bg-muted/30 p-4">
-              <dl className="grid gap-3 sm:grid-cols-2">
+              <dl className="grid gap-4 sm:grid-cols-2">
                 {entries.map(([key, values]) => (
                   <div key={key}>
                     <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {ENTITY_LABELS[key] ?? key}
                     </dt>
-                    <dd className="mt-0.5 text-sm text-foreground">
-                      {values.join(", ")}
+                    <dd className="mt-1.5 flex flex-wrap gap-1.5">
+                      {values.map((value) => (
+                        <span
+                          key={value}
+                          className="inline-flex rounded-md border bg-background px-2.5 py-1 text-sm text-foreground"
+                        >
+                          {value}
+                        </span>
+                      ))}
                     </dd>
                   </div>
                 ))}
@@ -88,7 +117,6 @@ function ExtractedEntitiesCard({
             </div>
           )}
         </div>
-
       </div>
     </div>
   )
@@ -99,8 +127,9 @@ export default function CVUploadView() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<ResumeExtractPayload | null>(null)
+  const [result, setResult] = useState<ResumeExtractResult | null>(null)
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
   const [pendingReplace, setPendingReplace] = useState<
     { type: "file"; file: File } | { type: "text"; text: string } | null
   >(null)
@@ -206,6 +235,11 @@ export default function CVUploadView() {
     setShowReplaceConfirm(false)
   }, [])
 
+  const handleEditSave = useCallback((updated: Resume) => {
+    setResult(updated)
+  }, [])
+
+  const resumeForEdit = result ? toResume(result) : null
   const hasExtractedResume = !!result
 
   return (
@@ -236,6 +270,22 @@ export default function CVUploadView() {
               <ExtractedEntitiesCard
                 payload={result!}
                 onReplace={handleReplaceResume}
+                onEdit={() => setShowEditDialog(true)}
+              />
+              <EditEntitiesDialog
+                resume={
+                  resumeForEdit ?? {
+                    id: "",
+                    user_id: null,
+                    entities: result!.entities ?? {},
+                    raw_text: result!.raw_text ?? null,
+                    created_at: "",
+                    updated_at: "",
+                  }
+                }
+                open={showEditDialog}
+                onOpenChange={setShowEditDialog}
+                onSave={handleEditSave}
               />
               <section className="rounded-lg border border-dashed bg-muted/20 p-6">
                 <h2 className="mb-2 text-sm font-medium text-foreground">

@@ -13,10 +13,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import CVUploadView from "@/components/cv-upload/CVUploadView"
+import { ResumeList } from "@/components/admin/ResumeList"
 import { ModeToggle } from "@/components/common/ModeToggler"
 
-export default function CVUploadPage() {
+export default function AdminPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -34,7 +34,7 @@ export default function CVUploadPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>CV Upload</BreadcrumbPage>
+                <BreadcrumbPage>Admin</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -43,7 +43,19 @@ export default function CVUploadPage() {
             <ModeToggle />
           </div>
         </header>
-        <CVUploadView />
+        <div className="flex-1 overflow-auto p-4">
+          <div className="mx-auto max-w-4xl space-y-6">
+            <section>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Admin dashboard
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                View and manage all resumes. No auth required for now.
+              </p>
+            </section>
+            <ResumeList />
+          </div>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

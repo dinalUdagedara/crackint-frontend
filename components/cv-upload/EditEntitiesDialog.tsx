@@ -10,7 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { updateResumeEntities } from "@/services/resume-uploader.service"
 import type { Resume, ResumeEntityKey } from "@/types/api.types"
 import { cn } from "@/lib/utils"
@@ -151,15 +153,14 @@ function EntityTagInput({
       {values.map((value, index) => (
         <span key={`${value}-${index}`} className="contents">
           {editingIndex === index ? (
-            <input
+            <Input
               ref={editInputRef}
-              type="text"
               value={editingValue}
               onChange={(e) => setEditingValue(e.target.value)}
               onKeyDown={(e) => handleEditKeyDown(e, index)}
               onBlur={() => handleEditBlur(index)}
               onClick={(e) => e.stopPropagation()}
-              className="min-w-[60px] max-w-[200px] rounded-md border bg-background px-2 py-0.5 text-sm outline-none ring-2 ring-ring"
+              className="h-8 min-w-[60px] max-w-[200px] shrink-0 px-2 py-1 text-sm"
             />
           ) : (
             <span
@@ -170,22 +171,24 @@ function EntityTagInput({
               className="inline-flex cursor-text items-center gap-1 rounded-md border bg-muted/50 px-2 py-0.5 text-sm hover:bg-muted/80"
             >
               {value}
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 shrink-0 rounded p-0 hover:bg-muted"
                 onClick={(e) => {
                   e.stopPropagation()
                   removeValue(index)
                 }}
-                className="rounded p-0.5 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
                 aria-label={`Remove ${value}`}
               >
                 <X className="size-3" />
-              </button>
+              </Button>
             </span>
           )}
         </span>
       ))}
-      <input
+      <Input
         ref={inputRef}
         id={id}
         type="text"
@@ -194,7 +197,7 @@ function EntityTagInput({
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         placeholder={values.length === 0 ? placeholder : "Add..."}
-        className="min-w-[80px] flex-1 shrink-0 border-0 bg-transparent p-0 text-sm outline-none placeholder:text-muted-foreground"
+        className="h-8 min-w-[80px] flex-1 shrink-0 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
       />
     </div>
   )
@@ -277,12 +280,26 @@ export function EditEntitiesDialog({
               <Label htmlFor={`edit-${key}`}>
                 {ENTITY_LABELS[key] ?? key}
               </Label>
-              <EntityTagInput
-                id={`edit-${key}`}
-                values={entities[key] ?? []}
-                onChange={(values) => handleEntityChange(key, values)}
-                placeholder={`Add ${ENTITY_LABELS[key] ?? key.toLowerCase()}...`}
-              />
+              {key === "NAME" ? (
+                <Textarea
+                  id={`edit-${key}`}
+                  value={(entities[key] ?? []).join(" ")}
+                  onChange={(e) => {
+                    const v = e.target.value.trim()
+                    handleEntityChange(key, v ? [v] : [])
+                  }}
+                  placeholder="Full name"
+                  rows={2}
+                  className="resize-none"
+                />
+              ) : (
+                <EntityTagInput
+                  id={`edit-${key}`}
+                  values={entities[key] ?? []}
+                  onChange={(values) => handleEntityChange(key, values)}
+                  placeholder={`Add ${ENTITY_LABELS[key] ?? key.toLowerCase()}...`}
+                />
+              )}
             </div>
           ))}
         </div>

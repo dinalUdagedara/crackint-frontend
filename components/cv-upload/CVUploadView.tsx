@@ -1,9 +1,10 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { FileUp, Loader2, Pencil } from "lucide-react"
+import { FileUp, FileText, Loader2, Pencil } from "lucide-react"
 import CVFileDropZone from "./CVFileDropZone"
 import CVPasteArea from "./CVPasteArea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EditEntitiesDialog } from "./EditEntitiesDialog"
 import {
   extractResumeFromFile,
@@ -301,15 +302,31 @@ export default function CVUploadView() {
                     isLoading && "pointer-events-none opacity-60"
                   )}
                 >
-                  <CVFileDropZone onFileSelect={handleFileSelect} />
-                  <CVPasteArea
-                    value={pasteText}
-                    onChange={(value) => {
-                      setPasteText(value)
-                      setError(null)
-                    }}
-                    placeholder="Paste new CV text to replace..."
-                  />
+                  <Tabs defaultValue="upload" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="upload">
+                        <FileUp className="size-4" />
+                        Upload file
+                      </TabsTrigger>
+                      <TabsTrigger value="paste">
+                        <FileText className="size-4" />
+                        Paste text
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="upload" className="mt-4">
+                      <CVFileDropZone onFileSelect={handleFileSelect} />
+                    </TabsContent>
+                    <TabsContent value="paste" className="mt-4">
+                      <CVPasteArea
+                        value={pasteText}
+                        onChange={(value) => {
+                          setPasteText(value)
+                          setError(null)
+                        }}
+                        placeholder="Paste new CV text to replace..."
+                      />
+                    </TabsContent>
+                  </Tabs>
                   <Button
                     onClick={handleExtractClick}
                     disabled={isLoading || !canExtract}
@@ -334,62 +351,61 @@ export default function CVUploadView() {
               </section>
             </>
           ) : (
-            <>
-              <section>
-                <h2 className="mb-3 text-sm font-medium text-foreground">
-                  Upload file
-                </h2>
-                <div
-                  className={cn(
-                    "relative",
-                    isLoading && "pointer-events-none opacity-60"
-                  )}
-                >
-                  <CVFileDropZone onFileSelect={handleFileSelect} />
-                  {isLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/50">
-                      <Loader2 className="size-8 animate-spin text-primary" />
-                    </div>
-                  )}
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  PDF only (max 10 MB). For images, paste your CV text below.
-                </p>
-              </section>
-
-              <div
-                className="flex items-center gap-4"
-                aria-hidden="true"
+            <section>
+              <Tabs defaultValue="upload" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="upload">
+                    <FileUp className="size-4" />
+                    Upload file
+                  </TabsTrigger>
+                  <TabsTrigger value="paste">
+                    <FileText className="size-4" />
+                    Paste text
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="upload" className="mt-4">
+                  <div
+                    className={cn(
+                      "relative",
+                      isLoading && "pointer-events-none opacity-60"
+                    )}
+                  >
+                    <CVFileDropZone onFileSelect={handleFileSelect} />
+                    {isLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/50">
+                        <Loader2 className="size-8 animate-spin text-primary" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    PDF only (max 10 MB). For images, use the Paste text tab.
+                  </p>
+                </TabsContent>
+                <TabsContent value="paste" className="mt-4">
+                  <CVPasteArea
+                    value={pasteText}
+                    onChange={(value) => {
+                      setPasteText(value)
+                      setError(null)
+                    }}
+                  />
+                </TabsContent>
+              </Tabs>
+              <Button
+                onClick={handleExtractClick}
+                disabled={isLoading || !canExtract}
+                className="mt-4"
               >
-                <div className="flex-1 border-t" />
-                <span className="text-xs text-muted-foreground">or</span>
-                <div className="flex-1 border-t" />
-              </div>
-
-              <section>
-                <CVPasteArea
-                  value={pasteText}
-                  onChange={(value) => {
-                    setPasteText(value)
-                    setError(null)
-                  }}
-                />
-                <Button
-                  onClick={handleExtractClick}
-                  disabled={isLoading || !canExtract}
-                  className="mt-3"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Extracting...
-                    </>
-                  ) : (
-                    "Extract"
-                  )}
-                </Button>
-              </section>
-            </>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Extracting...
+                  </>
+                ) : (
+                  "Extract"
+                )}
+              </Button>
+            </section>
           )}
         </div>
       </div>

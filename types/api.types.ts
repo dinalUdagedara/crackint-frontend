@@ -41,3 +41,97 @@ export type ResumeExtractResult = ResumeExtractPayload & Partial<Pick<Resume, "i
 
 /** Response payload for GET /resumes - array of resumes */
 export type ResumeListPayload = Resume[];
+
+/** Payload from POST /api/v1/jobs/extract. Entity keys vary (job NER or resume fallback). */
+export interface JobExtractPayload {
+  entities: Record<string, string[]>;
+  raw_text: string | null;
+}
+
+// ---- Job postings ----
+
+export interface JobPosting {
+  id: string;
+  user_id: string | null;
+  entities: Record<string, string[]>;
+  raw_text: string | null;
+  location: string | null;
+  deadline: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type JobPostingListPayload = JobPosting[];
+
+export interface JobPostingCreate {
+  user_id: string | null;
+  entities: Record<string, string[]>;
+  raw_text: string | null;
+  location: string | null;
+  deadline: string | null;
+}
+
+// ---- Prep sessions & messages ----
+
+export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE";
+
+export type PrepSessionStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
+
+export interface PrepSessionSummary {
+  // Kept generic for now; backend can shape this later
+  [key: string]: unknown;
+}
+
+export interface PrepSession {
+  id: string;
+  user_id: string | null;
+  resume_id: string | null;
+  job_posting_id: string | null;
+  mode: PrepSessionMode;
+  status: PrepSessionStatus;
+  readiness_score: number | null;
+  summary: PrepSessionSummary | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PrepSessionListPayload = PrepSession[];
+
+export interface PrepSessionCreate {
+  user_id: string | null;
+  resume_id: string | null;
+  job_posting_id: string | null;
+  mode: PrepSessionMode;
+}
+
+export type MessageSender = "USER" | "ASSISTANT";
+
+export type MessageType = "QUESTION" | "ANSWER" | "FEEDBACK";
+
+export interface MessageMetadata {
+  [key: string]: string;
+}
+
+export interface Message {
+  id: string;
+  session_id: string;
+  sender: MessageSender;
+  type: MessageType;
+  content: string;
+  metadata: MessageMetadata;
+  created_at: string;
+  updated_at: string;
+}
+
+export type MessageListPayload = Message[];
+
+export interface MessageCreate {
+  sender: MessageSender;
+  type: MessageType;
+  content: string;
+  metadata?: MessageMetadata;
+}
+
+export interface PrepSessionWithMessages extends PrepSession {
+  messages: Message[];
+}

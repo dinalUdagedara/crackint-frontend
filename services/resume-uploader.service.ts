@@ -31,20 +31,24 @@ async function parseResponse<T>(res: Response): Promise<ApiResponse<T>> {
   return data
 }
 
-/** Extract resume entities from a PDF file. Backend accepts PDF only. */
+/** Extract resume entities from a PDF or image file. Backend accepts PDF and images (PNG, JPEG, WebP). */
 export async function extractResumeFromFile(
-  file: File
+  file: File,
+  useEnhancedExtraction = false
 ): Promise<ApiResponse<ResumeExtractResult>> {
-  if (file.type !== "application/pdf") {
+  const isSupported =
+    file.type === "application/pdf" || file.type.startsWith("image/")
+  if (!isSupported) {
     throw new ResumeUploadError(
-      "Only PDF files are supported for upload. Please paste your CV text instead."
+      "Only PDF and image files (PNG, JPEG, WebP) are supported. Please paste your CV text instead."
     )
   }
 
   const formData = new FormData()
   formData.append("file", file)
 
-  const res = await fetch(`${RESUMES_BASE}/extract`, {
+  const url = `${RESUMES_BASE}/extract${useEnhancedExtraction ? "?validate=true" : ""}`
+  const res = await fetch(url, {
     method: "POST",
     body: formData,
   })
@@ -54,7 +58,8 @@ export async function extractResumeFromFile(
 
 /** Extract resume entities from raw text. */
 export async function extractResumeFromText(
-  text: string
+  text: string,
+  useEnhancedExtraction = false
 ): Promise<ApiResponse<ResumeExtractResult>> {
   const trimmed = text.trim()
   if (!trimmed) {
@@ -64,7 +69,8 @@ export async function extractResumeFromText(
   const formData = new FormData()
   formData.append("text", trimmed)
 
-  const res = await fetch(`${RESUMES_BASE}/extract`, {
+  const url = `${RESUMES_BASE}/extract${useEnhancedExtraction ? "?validate=true" : ""}`
+  const res = await fetch(url, {
     method: "POST",
     body: formData,
   })

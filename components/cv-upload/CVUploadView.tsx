@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { FileUp, FileText, Loader2, Pencil } from "lucide-react"
+import { AIExtractionLoader } from "./AIExtractionLoader"
 import CVFileDropZone from "./CVFileDropZone"
 import CVPasteArea from "./CVPasteArea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -129,6 +130,7 @@ export default function CVUploadView() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ResumeExtractResult | null>(null)
+  const [useEnhancedExtraction, setUseEnhancedExtraction] = useState(false)
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [pendingReplace, setPendingReplace] = useState<
@@ -175,12 +177,6 @@ export default function CVUploadView() {
   const handleFileSelect = useCallback((file: File | null) => {
     setSelectedFile(file)
     setError(null)
-    if (file && file.type !== "application/pdf") {
-      setError(
-        "Only PDF files are supported for upload. Please paste your CV text instead."
-      )
-      setSelectedFile(null)
-    }
   }, [])
 
   const canExtract = !!(selectedFile || pasteText.trim())
@@ -195,28 +191,41 @@ export default function CVUploadView() {
         setPendingReplace({ type: "file", file: selectedFile })
         setShowReplaceConfirm(true)
       } else {
-        performExtraction(() => extractResumeFromFile(selectedFile))
+        performExtraction(() =>
+          extractResumeFromFile(selectedFile, useEnhancedExtraction)
+        )
       }
     } else if (trimmed) {
       if (result) {
         setPendingReplace({ type: "text", text: trimmed })
         setShowReplaceConfirm(true)
       } else {
-        performExtraction(() => extractResumeFromText(trimmed))
+        performExtraction(() =>
+          extractResumeFromText(trimmed, useEnhancedExtraction)
+        )
       }
     }
-  }, [selectedFile, pasteText, result, canExtract, performExtraction])
+  }, [
+    selectedFile,
+    pasteText,
+    result,
+    canExtract,
+    performExtraction,
+    useEnhancedExtraction,
+  ])
 
   const handleConfirmReplace = useCallback(async () => {
     if (!pendingReplace) return
     if (pendingReplace.type === "file") {
-      await performExtraction(() => extractResumeFromFile(pendingReplace.file))
+      await performExtraction(() =>
+        extractResumeFromFile(pendingReplace.file, useEnhancedExtraction)
+      )
     } else {
       await performExtraction(() =>
-        extractResumeFromText(pendingReplace.text)
+        extractResumeFromText(pendingReplace.text, useEnhancedExtraction)
       )
     }
-  }, [pendingReplace, performExtraction])
+  }, [pendingReplace, performExtraction, useEnhancedExtraction])
 
   const handleCancelReplace = useCallback(() => {
     setShowReplaceConfirm(false)
@@ -327,6 +336,21 @@ export default function CVUploadView() {
                       />
                     </TabsContent>
                   </Tabs>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={useEnhancedExtraction}
+                      onChange={(e) =>
+                        setUseEnhancedExtraction(e.target.checked)
+                      }
+                      className="size-4 rounded border-input"
+                    />
+                    <span className="text-sm">Use enhanced extraction (AI)</span>
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Enhanced extraction may improve completeness (e.g. skills); if
+                    unavailable, standard extraction is used automatically.
+                  </p>
                   <Button
                     onClick={handleExtractClick}
                     disabled={isLoading || !canExtract}
@@ -343,15 +367,21 @@ export default function CVUploadView() {
                     )}
                   </Button>
                   {isLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/50">
-                      <Loader2 className="size-8 animate-spin text-primary" />
+                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
+                      <AIExtractionLoader />
                     </div>
                   )}
                 </div>
               </section>
             </>
           ) : (
-            <section>
+            <section className="relative">
+              <div
+                className={cn(
+                  "space-y-4",
+                  isLoading && "pointer-events-none opacity-60"
+                )}
+              >
               <Tabs defaultValue="upload" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="upload">
@@ -364,21 +394,9 @@ export default function CVUploadView() {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="upload" className="mt-4">
-                  <div
-                    className={cn(
-                      "relative",
-                      isLoading && "pointer-events-none opacity-60"
-                    )}
-                  >
-                    <CVFileDropZone onFileSelect={handleFileSelect} />
-                    {isLoading && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/50">
-                        <Loader2 className="size-8 animate-spin text-primary" />
-                      </div>
-                    )}
-                  </div>
+                  <CVFileDropZone onFileSelect={handleFileSelect} />
                   <p className="mt-2 text-xs text-muted-foreground">
-                    PDF only (max 10 MB). For images, use the Paste text tab.
+                    PDF or images (PNG, JPEG, WebP) up to 5 MB.
                   </p>
                 </TabsContent>
                 <TabsContent value="paste" className="mt-4">
@@ -391,6 +409,19 @@ export default function CVUploadView() {
                   />
                 </TabsContent>
               </Tabs>
+              <label className="mt-4 flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={useEnhancedExtraction}
+                  onChange={(e) => setUseEnhancedExtraction(e.target.checked)}
+                  className="size-4 rounded border-input"
+                />
+                <span className="text-sm">Use enhanced extraction (AI)</span>
+              </label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Enhanced extraction may improve completeness (e.g. skills); if
+                unavailable, standard extraction is used automatically.
+              </p>
               <Button
                 onClick={handleExtractClick}
                 disabled={isLoading || !canExtract}
@@ -405,6 +436,12 @@ export default function CVUploadView() {
                   "Extract"
                 )}
               </Button>
+              </div>
+              {isLoading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
+                  <AIExtractionLoader />
+                </div>
+              )}
             </section>
           )}
         </div>

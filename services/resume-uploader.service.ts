@@ -33,7 +33,8 @@ async function parseResponse<T>(res: Response): Promise<ApiResponse<T>> {
 
 /** Extract resume entities from a PDF file. Backend accepts PDF only. */
 export async function extractResumeFromFile(
-  file: File
+  file: File,
+  useEnhancedExtraction = false
 ): Promise<ApiResponse<ResumeExtractResult>> {
   if (file.type !== "application/pdf") {
     throw new ResumeUploadError(
@@ -44,7 +45,8 @@ export async function extractResumeFromFile(
   const formData = new FormData()
   formData.append("file", file)
 
-  const res = await fetch(`${RESUMES_BASE}/extract`, {
+  const url = `${RESUMES_BASE}/extract${useEnhancedExtraction ? "?validate=true" : ""}`
+  const res = await fetch(url, {
     method: "POST",
     body: formData,
   })
@@ -54,7 +56,8 @@ export async function extractResumeFromFile(
 
 /** Extract resume entities from raw text. */
 export async function extractResumeFromText(
-  text: string
+  text: string,
+  useEnhancedExtraction = false
 ): Promise<ApiResponse<ResumeExtractResult>> {
   const trimmed = text.trim()
   if (!trimmed) {
@@ -64,7 +67,8 @@ export async function extractResumeFromText(
   const formData = new FormData()
   formData.append("text", trimmed)
 
-  const res = await fetch(`${RESUMES_BASE}/extract`, {
+  const url = `${RESUMES_BASE}/extract${useEnhancedExtraction ? "?validate=true" : ""}`
+  const res = await fetch(url, {
     method: "POST",
     body: formData,
   })

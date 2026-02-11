@@ -129,6 +129,7 @@ export default function CVUploadView() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ResumeExtractResult | null>(null)
+  const [useEnhancedExtraction, setUseEnhancedExtraction] = useState(false)
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [pendingReplace, setPendingReplace] = useState<
@@ -195,28 +196,41 @@ export default function CVUploadView() {
         setPendingReplace({ type: "file", file: selectedFile })
         setShowReplaceConfirm(true)
       } else {
-        performExtraction(() => extractResumeFromFile(selectedFile))
+        performExtraction(() =>
+          extractResumeFromFile(selectedFile, useEnhancedExtraction)
+        )
       }
     } else if (trimmed) {
       if (result) {
         setPendingReplace({ type: "text", text: trimmed })
         setShowReplaceConfirm(true)
       } else {
-        performExtraction(() => extractResumeFromText(trimmed))
+        performExtraction(() =>
+          extractResumeFromText(trimmed, useEnhancedExtraction)
+        )
       }
     }
-  }, [selectedFile, pasteText, result, canExtract, performExtraction])
+  }, [
+    selectedFile,
+    pasteText,
+    result,
+    canExtract,
+    performExtraction,
+    useEnhancedExtraction,
+  ])
 
   const handleConfirmReplace = useCallback(async () => {
     if (!pendingReplace) return
     if (pendingReplace.type === "file") {
-      await performExtraction(() => extractResumeFromFile(pendingReplace.file))
+      await performExtraction(() =>
+        extractResumeFromFile(pendingReplace.file, useEnhancedExtraction)
+      )
     } else {
       await performExtraction(() =>
-        extractResumeFromText(pendingReplace.text)
+        extractResumeFromText(pendingReplace.text, useEnhancedExtraction)
       )
     }
-  }, [pendingReplace, performExtraction])
+  }, [pendingReplace, performExtraction, useEnhancedExtraction])
 
   const handleCancelReplace = useCallback(() => {
     setShowReplaceConfirm(false)
@@ -327,6 +341,21 @@ export default function CVUploadView() {
                       />
                     </TabsContent>
                   </Tabs>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={useEnhancedExtraction}
+                      onChange={(e) =>
+                        setUseEnhancedExtraction(e.target.checked)
+                      }
+                      className="size-4 rounded border-input"
+                    />
+                    <span className="text-sm">Use enhanced extraction (AI)</span>
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Enhanced extraction may improve completeness (e.g. skills); if
+                    unavailable, standard extraction is used automatically.
+                  </p>
                   <Button
                     onClick={handleExtractClick}
                     disabled={isLoading || !canExtract}
@@ -391,6 +420,19 @@ export default function CVUploadView() {
                   />
                 </TabsContent>
               </Tabs>
+              <label className="mt-4 flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={useEnhancedExtraction}
+                  onChange={(e) => setUseEnhancedExtraction(e.target.checked)}
+                  className="size-4 rounded border-input"
+                />
+                <span className="text-sm">Use enhanced extraction (AI)</span>
+              </label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Enhanced extraction may improve completeness (e.g. skills); if
+                unavailable, standard extraction is used automatically.
+              </p>
               <Button
                 onClick={handleExtractClick}
                 disabled={isLoading || !canExtract}

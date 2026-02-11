@@ -103,6 +103,7 @@ function ExtractedJobEntitiesCard({
 export default function JobUploadView() {
   const [pasteText, setPasteText] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [useValidation, setUseValidation] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<JobExtractPayload | null>(null)
@@ -149,11 +150,15 @@ export default function JobUploadView() {
     const trimmed = pasteText.trim()
 
     if (selectedFile) {
-      performExtraction(() => extractJobFromFile(selectedFile))
+      performExtraction(() =>
+        extractJobFromFile(selectedFile, useValidation)
+      )
     } else if (trimmed) {
-      performExtraction(() => extractJobFromText(trimmed))
+      performExtraction(() =>
+        extractJobFromText(trimmed, useValidation)
+      )
     }
-  }, [selectedFile, pasteText, canExtract, performExtraction])
+  }, [selectedFile, pasteText, canExtract, performExtraction, useValidation])
 
   const handleReplaceJobPoster = useCallback(() => {
     setResult(null)
@@ -235,6 +240,23 @@ export default function JobUploadView() {
                       />
                     </TabsContent>
                   </Tabs>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={useValidation}
+                      onChange={(e) =>
+                        setUseValidation(e.target.checked)
+                      }
+                      className="size-4 rounded border-input"
+                    />
+                    <span className="text-sm">
+                      Use AI validation (more accurate, slower)
+                    </span>
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    AI validation may improve completeness; if unavailable,
+                    standard extraction is used automatically.
+                  </p>
                   <Button
                     onClick={handleExtractClick}
                     disabled={isLoading || !canExtract}
@@ -244,7 +266,7 @@ export default function JobUploadView() {
                     {isLoading ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Extracting...
+                        {useValidation ? "Validating with AI..." : "Extracting..."}
                       </>
                     ) : (
                       "Extract"
@@ -252,7 +274,13 @@ export default function JobUploadView() {
                   </Button>
                   {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
-                      <AIExtractionLoader message="Analyzing job description" />
+                      <AIExtractionLoader
+                        message={
+                          useValidation
+                            ? "Extracting and validating with AI"
+                            : "Analyzing job description"
+                        }
+                      />
                     </div>
                   )}
                 </div>
@@ -299,6 +327,21 @@ export default function JobUploadView() {
                     />
                   </TabsContent>
                 </Tabs>
+                <label className="mt-4 flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={useValidation}
+                    onChange={(e) => setUseValidation(e.target.checked)}
+                    className="size-4 rounded border-input"
+                  />
+                  <span className="text-sm">
+                    Use AI validation (more accurate, slower)
+                  </span>
+                </label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  AI validation may improve completeness; if unavailable,
+                  standard extraction is used automatically.
+                </p>
                 <Button
                   onClick={handleExtractClick}
                   disabled={isLoading || !canExtract}
@@ -307,7 +350,7 @@ export default function JobUploadView() {
                   {isLoading ? (
                     <>
                       <Loader2 className="size-4 animate-spin" />
-                      Extracting...
+                      {useValidation ? "Validating with AI..." : "Extracting..."}
                     </>
                   ) : (
                     "Extract"
@@ -316,7 +359,13 @@ export default function JobUploadView() {
               </div>
               {isLoading && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
-                  <AIExtractionLoader message="Analyzing job description" />
+                  <AIExtractionLoader
+                    message={
+                      useValidation
+                        ? "Extracting and validating with AI"
+                        : "Analyzing job description"
+                    }
+                  />
                 </div>
               )}
             </section>

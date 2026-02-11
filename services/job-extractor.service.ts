@@ -41,7 +41,8 @@ function isSupportedFileType(file: File): boolean {
 
 /** Extract job entities from a PDF or image file. Backend accepts PDF and images (PNG, JPEG, WebP). */
 export async function extractJobFromFile(
-  file: File
+  file: File,
+  useValidation = false
 ): Promise<ApiResponse<JobExtractPayload>> {
   if (!isSupportedFileType(file)) {
     throw new JobExtractError(
@@ -52,7 +53,8 @@ export async function extractJobFromFile(
   const formData = new FormData()
   formData.append("file", file)
 
-  const res = await fetch(`${JOBS_BASE}/extract`, {
+  const url = `${JOBS_BASE}/extract${useValidation ? "?validate=true" : ""}`
+  const res = await fetch(url, {
     method: "POST",
     body: formData,
   })
@@ -62,7 +64,8 @@ export async function extractJobFromFile(
 
 /** Extract job entities from raw text. */
 export async function extractJobFromText(
-  text: string
+  text: string,
+  useValidation = false
 ): Promise<ApiResponse<JobExtractPayload>> {
   const trimmed = text.trim()
   if (!trimmed) {
@@ -74,7 +77,8 @@ export async function extractJobFromText(
   const formData = new FormData()
   formData.append("text", trimmed)
 
-  const res = await fetch(`${JOBS_BASE}/extract`, {
+  const url = `${JOBS_BASE}/extract${useValidation ? "?validate=true" : ""}`
+  const res = await fetch(url, {
     method: "POST",
     body: formData,
   })

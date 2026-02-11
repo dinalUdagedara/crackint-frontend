@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { FileUp, FileText, Loader2, Pencil } from "lucide-react"
+import { AIExtractionLoader } from "./AIExtractionLoader"
 import CVFileDropZone from "./CVFileDropZone"
 import CVPasteArea from "./CVPasteArea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -372,15 +373,21 @@ export default function CVUploadView() {
                     )}
                   </Button>
                   {isLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/50">
-                      <Loader2 className="size-8 animate-spin text-primary" />
+                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
+                      <AIExtractionLoader />
                     </div>
                   )}
                 </div>
               </section>
             </>
           ) : (
-            <section>
+            <section className="relative">
+              <div
+                className={cn(
+                  "space-y-4",
+                  isLoading && "pointer-events-none opacity-60"
+                )}
+              >
               <Tabs defaultValue="upload" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="upload">
@@ -393,19 +400,7 @@ export default function CVUploadView() {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="upload" className="mt-4">
-                  <div
-                    className={cn(
-                      "relative",
-                      isLoading && "pointer-events-none opacity-60"
-                    )}
-                  >
-                    <CVFileDropZone onFileSelect={handleFileSelect} />
-                    {isLoading && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/50">
-                        <Loader2 className="size-8 animate-spin text-primary" />
-                      </div>
-                    )}
-                  </div>
+                  <CVFileDropZone onFileSelect={handleFileSelect} />
                   <p className="mt-2 text-xs text-muted-foreground">
                     PDF only (max 10 MB). For images, use the Paste text tab.
                   </p>
@@ -447,6 +442,12 @@ export default function CVUploadView() {
                   "Extract"
                 )}
               </Button>
+              </div>
+              {isLoading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
+                  <AIExtractionLoader />
+                </div>
+              )}
             </section>
           )}
         </div>

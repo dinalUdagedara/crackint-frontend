@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import { useRouter } from "next/navigation"
 import { FileUp, FileText, Loader2 } from "lucide-react"
 import { AIExtractionLoader } from "@/components/cv-upload/AIExtractionLoader"
 import CVFileDropZone from "@/components/cv-upload/CVFileDropZone"
@@ -11,6 +12,7 @@ import {
   extractJobFromText,
   JobExtractError,
 } from "@/services/job-extractor.service"
+import { createJobPosting } from "@/services/job-postings.service"
 import type { JobExtractPayload } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -100,13 +102,16 @@ function ExtractedJobEntitiesCard({
   )
 }
 
-export default function JobUploadView() {
+export default function JobUploadView({ userId }: { userId?: string | null }) {
+  const router = useRouter()
   const [pasteText, setPasteText] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [useValidation, setUseValidation] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<JobExtractPayload | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const performExtraction = useCallback(
     async (
@@ -162,9 +167,42 @@ export default function JobUploadView() {
 
   const handleReplaceJobPoster = useCallback(() => {
     setResult(null)
+    setSaveError(null)
   }, [])
 
   const hasExtractedResult = !!result
+
+  async function handleSaveJobPosting() {
+    if (!result || isSaving) return
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      const location =
+        result.entities?.LOCATION?.[0] ??
+        result.entities?.CITY?.[0] ??
+        null
+
+      const response = await createJobPosting({
+        user_id: userId ?? null,
+        entities: result.entities ?? {},
+        raw_text: result.raw_text ?? null,
+        location,
+        deadline: null,
+      })
+
+      if (response.success && response.payload) {
+        router.push(`/job-postings/${response.payload.id}`)
+      } else {
+        setSaveError("Failed to save job posting. Please try again.")
+      }
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save job posting."
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -196,6 +234,32 @@ export default function JobUploadView() {
                 payload={result!}
                 onReplace={handleReplaceJobPoster}
               />
+            {saveError && (
+              <div
+                role="alert"
+                className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              >
+                {saveError}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={handleSaveJobPosting}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Saving job posting...
+                  </>
+                ) : (
+                  "Save as job posting"
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                This will create a stored job posting that you can reuse in prep sessions.
+              </p>
+            </div>
               <section className="rounded-lg border border-dashed bg-muted/20 p-6">
                 <h2 className="mb-2 text-sm font-medium text-foreground">
                   Replace job poster

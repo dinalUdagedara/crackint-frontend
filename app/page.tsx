@@ -14,6 +14,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import HomeView from "@/components/home-dashboard/HomeView"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import { ModeToggle } from "@/components/common/ModeToggler"
 
 export default function Page() {
@@ -30,13 +32,11 @@ export default function Page() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  Building Your Application
-                </BreadcrumbLink>
+                <BreadcrumbLink href="/">Home</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+                <BreadcrumbPage>Dashboard</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -46,7 +46,33 @@ export default function Page() {
             <ModeToggle />
           </div>
         </header>
-        <HomeView />
+        <div className="flex-1 overflow-auto">
+          <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Crackint interview prep
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Upload your CV, add job postings, and run chat-style prep
+                  sessions with AI feedback.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button asChild size="sm">
+                  <Link href="/cv-upload">CV upload</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/job-upload">Job upload</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/sessions">Prep sessions</Link>
+                </Button>
+              </div>
+            </div>
+            <HomeView />
+          </div>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

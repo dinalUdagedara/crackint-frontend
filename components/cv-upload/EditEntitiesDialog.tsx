@@ -198,7 +198,7 @@ function EntityTagInput({
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         placeholder={values.length === 0 ? placeholder : "Add..."}
-        className="h-8 min-w-[80px] flex-1 shrink-0 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 px-3"
+        className="h-8 min-w-[80px] flex-1 shrink-0 border-0 bg-transparent shadow-none focus-visible:ring-0 px-3"
       />
     </div>
   )

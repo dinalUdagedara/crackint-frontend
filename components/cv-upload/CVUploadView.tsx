@@ -177,12 +177,6 @@ export default function CVUploadView() {
   const handleFileSelect = useCallback((file: File | null) => {
     setSelectedFile(file)
     setError(null)
-    if (file && file.type !== "application/pdf") {
-      setError(
-        "Only PDF files are supported for upload. Please paste your CV text instead."
-      )
-      setSelectedFile(null)
-    }
   }, [])
 
   const canExtract = !!(selectedFile || pasteText.trim())
@@ -402,7 +396,7 @@ export default function CVUploadView() {
                 <TabsContent value="upload" className="mt-4">
                   <CVFileDropZone onFileSelect={handleFileSelect} />
                   <p className="mt-2 text-xs text-muted-foreground">
-                    PDF only (max 10 MB). For images, use the Paste text tab.
+                    PDF or images (PNG, JPEG, WebP) up to 5 MB.
                   </p>
                 </TabsContent>
                 <TabsContent value="paste" className="mt-4">

@@ -3,6 +3,7 @@
 import Link from "next/link"
 import {
   Briefcase,
+  ClipboardList,
   FileCheck,
   FileUp,
   LayoutDashboard,
@@ -21,6 +22,7 @@ const footerItems = [
   { title: "Clear conversations", href: "#", icon: Trash2 },
   { title: "CV Checker", href: "#", icon: FileCheck },
   { title: "CV Upload", href: "/cv-upload", icon: FileUp },
+  { title: "Job Poster", href: "/job-upload", icon: ClipboardList },
   { title: "Admin", href: "/admin", icon: LayoutDashboard },
   { title: "My account", href: "#", icon: User },
   { title: "Job Tracker", href: "#", icon: Briefcase },

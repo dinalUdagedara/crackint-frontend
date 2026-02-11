@@ -41,3 +41,9 @@ export type ResumeExtractResult = ResumeExtractPayload & Partial<Pick<Resume, "i
 
 /** Response payload for GET /resumes - array of resumes */
 export type ResumeListPayload = Resume[];
+
+/** Payload from POST /api/v1/jobs/extract. Entity keys vary (job NER or resume fallback). */
+export interface JobExtractPayload {
+  entities: Record<string, string[]>;
+  raw_text: string | null;
+}

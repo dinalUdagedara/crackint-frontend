@@ -1,11 +1,16 @@
 "use client"
 
-export function AIExtractionLoader() {
+type AIExtractionLoaderProps = {
+  /** Custom message, e.g. "Analyzing job description" */
+  message?: string
+}
+
+export function AIExtractionLoader({ message = "Analyzing your resume" }: AIExtractionLoaderProps) {
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label="Extracting resume information"
+      aria-label="Extracting information"
       className="flex flex-col items-center justify-center gap-4 rounded-xl border bg-muted/30 px-8 py-10 backdrop-blur-sm"
     >
       {/* Bouncing dots - ChatGPT style */}
@@ -21,7 +26,7 @@ export function AIExtractionLoader() {
         />
       </div>
       <p className="text-sm text-muted-foreground">
-        Analyzing your resume
+        {message}
         <span className="inline-block animate-pulse">...</span>
       </p>
     </div>

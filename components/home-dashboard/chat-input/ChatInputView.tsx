@@ -15,13 +15,11 @@ export default function ChatInputView({
   return (
     <footer
       className={cn(
-        "shrink-0 border-t border-border bg-muted/30 px-4 py-3",
+        "w-full shrink-0 border-t border-border bg-muted/30 px-4 py-3",
         className
       )}
     >
-      <div className="mx-auto max-w-3xl">
-        <ChatInput placeholder="Type message" onSend={onSend} />
-      </div>
+      <ChatInput placeholder="Type message" onSend={onSend} />
     </footer>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import {
   appendMessage,
   getSessionWithMessages,
@@ -60,7 +61,6 @@ export function SessionChatView() {
 
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
-  const [sendError, setSendError] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
@@ -78,12 +78,13 @@ export function SessionChatView() {
           setSession(res.payload)
         } else {
           setError("Session not found")
+          toast.error("Session not found")
         }
       } catch (err) {
         if (!isMounted) return
-        setError(
-          err instanceof Error ? err.message : "Failed to load session"
-        )
+        const msg = err instanceof Error ? err.message : "Failed to load session"
+        setError(msg)
+        toast.error(msg)
       } finally {
         if (isMounted) {
           setIsLoading(false)
@@ -117,7 +118,6 @@ export function SessionChatView() {
     }
 
     setIsSending(true)
-    setSendError(null)
     try {
       const res = await appendMessage(sessionId, body)
       if (res.success && res.payload) {
@@ -132,10 +132,10 @@ export function SessionChatView() {
         )
         setInput("")
       } else {
-        setSendError("Failed to send message.")
+        toast.error("Failed to send message.")
       }
     } catch (err) {
-      setSendError(
+      toast.error(
         err instanceof Error ? err.message : "Failed to send message."
       )
     } finally {
@@ -222,14 +222,6 @@ export function SessionChatView() {
       </div>
 
       <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
-        {sendError && (
-          <div
-            role="alert"
-            className="mb-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          >
-            {sendError}
-          </div>
-        )}
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}

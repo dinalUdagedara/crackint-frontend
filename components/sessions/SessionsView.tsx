@@ -1,19 +1,40 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
+import { Loader2, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { listResumes } from "@/services/resume-uploader.service"
 import { listJobPostings } from "@/services/job-postings.service"
-import { createSession, listSessions } from "@/services/sessions.service"
+import {
+  createSession,
+  deleteSession,
+  listSessions,
+} from "@/services/sessions.service"
 import type {
   JobPosting,
   PrepSession,
+  PrepSessionCreate,
   PrepSessionMode,
   Resume,
 } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Select,
   SelectContent,
@@ -37,92 +58,79 @@ function getSessionTitle(session: PrepSession) {
 
 export function SessionsView({ userId }: { userId?: string | null }) {
   const router = useRouter()
-
-  const [sessions, setSessions] = useState<PrepSession[]>([])
-  const [sessionsMeta, setSessionsMeta] = useState<{
-    page: number
-    page_size: number
-    total_pages: number
-    total_items: number
-  } | null>(null)
   const [sessionsPage, setSessionsPage] = useState(1)
-  const [isLoadingSessions, setIsLoadingSessions] = useState(true)
-  const [sessionsError, setSessionsError] = useState<string | null>(null)
-
-  const [resumes, setResumes] = useState<Resume[]>([])
-  const [jobPostings, setJobPostings] = useState<JobPosting[]>([])
-  const [isLoadingOptions, setIsLoadingOptions] = useState(true)
-  const [optionsError, setOptionsError] = useState<string | null>(null)
 
   const [selectedResumeId, setSelectedResumeId] = useState<string>("")
   const [selectedJobPostingId, setSelectedJobPostingId] = useState<string>("")
   const [mode, setMode] = useState<PrepSessionMode>("TARGETED")
-  const [isCreating, setIsCreating] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
 
-  const fetchSessions = useCallback(async () => {
-    setIsLoadingSessions(true)
-    setSessionsError(null)
-    try {
-      const res = await listSessions(sessionsPage, 20, userId ?? undefined)
-      if (res.success && res.payload) {
-        setSessions(res.payload)
-        if (res.meta) {
-          setSessionsMeta(res.meta)
-        }
-      } else {
-        setSessions([])
-      }
-    } catch (err) {
-      setSessionsError(
-        err instanceof Error ? err.message : "Failed to load sessions"
-      )
-      setSessions([])
-    } finally {
-      setIsLoadingSessions(false)
-    }
-  }, [sessionsPage, userId])
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<PrepSession | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchOptions = useCallback(async () => {
-    setIsLoadingOptions(true)
-    setOptionsError(null)
-    try {
+  const sessionsQuery = useQuery({
+    queryKey: [
+      "sessions",
+      "list",
+      { page: sessionsPage, pageSize: 20, userId: userId ?? null },
+    ],
+    queryFn: () => listSessions(sessionsPage, 20, userId ?? undefined),
+    placeholderData: (prev) => prev,
+  })
+
+  const optionsQuery = useQuery({
+    queryKey: ["sessions", "options", { userId: userId ?? null }],
+    queryFn: async (): Promise<{ resumes: Resume[]; jobPostings: JobPosting[] }> => {
       const [resumesRes, jobsRes] = await Promise.all([
         listResumes(1, 100, userId ?? undefined),
         listJobPostings(1, 100, userId ?? undefined),
       ])
-
-      if (resumesRes.success && resumesRes.payload) {
-        setResumes(resumesRes.payload)
-      } else {
-        setResumes([])
+      return {
+        resumes: resumesRes.payload ?? [],
+        jobPostings: jobsRes.payload ?? [],
       }
+    },
+  })
 
-      if (jobsRes.success && jobsRes.payload) {
-        setJobPostings(jobsRes.payload)
-      } else {
-        setJobPostings([])
+  const createSessionMutation = useMutation({
+    mutationFn: async (body: PrepSessionCreate) => {
+      const res = await createSession(body)
+      if (!res.success || !res.payload) {
+        throw new Error(res.message || "Failed to create session.")
       }
-    } catch (err) {
-      setOptionsError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load resumes and job postings"
-      )
-      setResumes([])
-      setJobPostings([])
-    } finally {
-      setIsLoadingOptions(false)
-    }
-  }, [userId])
+      return res
+    },
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions"] })
+      toast.success("Session created")
+      router.push(`/sessions/${res.payload!.id}`)
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to create session.")
+    },
+  })
 
-  useEffect(() => {
-    fetchSessions()
-  }, [fetchSessions])
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await deleteSession(id)
+      if (!res.success) {
+        throw new Error(res.message || "Failed to delete session.")
+      }
+      return res
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions"] })
+      toast.success("Session deleted")
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to delete session.")
+    },
+  })
 
-  useEffect(() => {
-    fetchOptions()
-  }, [fetchOptions])
+  const sessions = sessionsQuery.data?.payload ?? []
+  const sessionsMeta = sessionsQuery.data?.meta ?? null
+  const resumes = optionsQuery.data?.resumes ?? []
+  const jobPostings = optionsQuery.data?.jobPostings ?? []
 
   const canCreateTargeted =
     mode === "TARGETED" && selectedResumeId && selectedJobPostingId
@@ -130,13 +138,11 @@ export function SessionsView({ userId }: { userId?: string | null }) {
   const canCreateQuickPractice = mode === "QUICK_PRACTICE"
 
   async function handleCreateSession() {
-    if (isCreating) return
+    if (createSessionMutation.isPending) return
     if (!canCreateTargeted && !canCreateQuickPractice) return
 
-    setIsCreating(true)
-    setCreateError(null)
     try {
-      const res = await createSession({
+      await createSessionMutation.mutateAsync({
         user_id: userId ?? null,
         resume_id:
           mode === "TARGETED" ? selectedResumeId || null : null,
@@ -144,20 +150,47 @@ export function SessionsView({ userId }: { userId?: string | null }) {
           mode === "TARGETED" ? selectedJobPostingId || null : null,
         mode,
       })
-
-      if (res.success && res.payload) {
-        router.push(`/sessions/${res.payload.id}`)
-      } else {
-        setCreateError("Failed to create session.")
-      }
-    } catch (err) {
-      setCreateError(
-        err instanceof Error ? err.message : "Failed to create session."
-      )
-    } finally {
-      setIsCreating(false)
+    } catch {
+      // errors shown via mutation state
     }
   }
+
+  function openDeleteDialog(session: PrepSession) {
+    deleteSessionMutation.reset()
+    setDeleteTarget(session)
+    setIsDeleteDialogOpen(true)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget || deleteSessionMutation.isPending) return
+    try {
+      await deleteSessionMutation.mutateAsync(deleteTarget.id)
+      setIsDeleteDialogOpen(false)
+      setDeleteTarget(null)
+    } catch {
+      // errors shown via mutation state
+    }
+  }
+
+  useEffect(() => {
+    if (optionsQuery.isError) {
+      const msg =
+        optionsQuery.error instanceof Error
+          ? optionsQuery.error.message
+          : "Failed to load resumes and job postings"
+      toast.error(msg)
+    }
+  }, [optionsQuery.isError, optionsQuery.error])
+
+  useEffect(() => {
+    if (sessionsQuery.isError) {
+      const msg =
+        sessionsQuery.error instanceof Error
+          ? sessionsQuery.error.message
+          : "Failed to load sessions"
+      toast.error(msg)
+    }
+  }, [sessionsQuery.isError, sessionsQuery.error])
 
   return (
     <div className="space-y-8">
@@ -177,27 +210,18 @@ export function SessionsView({ userId }: { userId?: string | null }) {
           </Button>
         </div>
 
-        {optionsError && (
-          <div
-            role="alert"
-            className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          >
-            {optionsError}
-          </div>
-        )}
-
         <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr,1.2fr,auto]">
           <div className="space-y-2">
             <Label htmlFor="resume-select">Resume</Label>
             <Select
               value={selectedResumeId}
               onValueChange={setSelectedResumeId}
-              disabled={isLoadingOptions || mode !== "TARGETED"}
+              disabled={optionsQuery.isPending || mode !== "TARGETED"}
             >
               <SelectTrigger id="resume-select">
                 <SelectValue
                   placeholder={
-                    isLoadingOptions
+                    optionsQuery.isPending
                       ? "Loading resumes..."
                       : resumes.length
                         ? "Select a resume"
@@ -224,12 +248,12 @@ export function SessionsView({ userId }: { userId?: string | null }) {
             <Select
               value={selectedJobPostingId}
               onValueChange={setSelectedJobPostingId}
-              disabled={isLoadingOptions || mode !== "TARGETED"}
+              disabled={optionsQuery.isPending || mode !== "TARGETED"}
             >
               <SelectTrigger id="job-select">
                 <SelectValue
                   placeholder={
-                    isLoadingOptions
+                    optionsQuery.isPending
                       ? "Loading job postings..."
                       : jobPostings.length
                         ? "Select a job posting"
@@ -284,11 +308,11 @@ export function SessionsView({ userId }: { userId?: string | null }) {
           <Button
             onClick={handleCreateSession}
             disabled={
-              isCreating ||
+              createSessionMutation.isPending ||
               (!canCreateTargeted && !canCreateQuickPractice)
             }
           >
-            {isCreating ? (
+            {createSessionMutation.isPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
                 Creating session...
@@ -301,15 +325,6 @@ export function SessionsView({ userId }: { userId?: string | null }) {
             You can always come back to this session later from the list below.
           </p>
         </div>
-
-        {createError && (
-          <div
-            role="alert"
-            className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          >
-            {createError}
-          </div>
-        )}
       </section>
 
       <section className="space-y-3">
@@ -324,21 +339,12 @@ export function SessionsView({ userId }: { userId?: string | null }) {
           </div>
         </div>
 
-        {isLoadingSessions && sessions.length === 0 ? (
+        {sessionsQuery.isPending && sessions.length === 0 ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
-            {sessionsError && (
-              <div
-                role="alert"
-                className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-              >
-                {sessionsError}
-              </div>
-            )}
-
             {sessions.length === 0 ? (
               <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
                 No prep sessions yet. Start one above to begin practicing.
@@ -363,6 +369,9 @@ export function SessionsView({ userId }: { userId?: string | null }) {
                         </th>
                         <th className="px-4 py-3 text-left font-medium">
                           Created
+                        </th>
+                        <th className="px-4 py-3 text-right font-medium">
+                          Actions
                         </th>
                       </tr>
                     </thead>
@@ -392,6 +401,17 @@ export function SessionsView({ userId }: { userId?: string | null }) {
                           <td className="px-4 py-3 text-muted-foreground">
                             {formatDate(session.created_at)}
                           </td>
+                          <td className="px-4 py-3 text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDeleteDialog(session)}
+                              className="text-muted-foreground hover:text-destructive"
+                              aria-label="Delete session"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -402,12 +422,46 @@ export function SessionsView({ userId }: { userId?: string | null }) {
           </>
         )}
 
+        <AlertDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeleteDialogOpen(open)
+            if (!open) {
+              deleteSessionMutation.reset()
+              setDeleteTarget(null)
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete session?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the session and all its messages.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteSessionMutation.isPending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  void handleConfirmDelete()
+                }}
+                disabled={deleteSessionMutation.isPending}
+              >
+                {deleteSessionMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {sessionsMeta && sessionsMeta.total_pages > 1 && (
           <div className="flex items-center justify-center gap-2 pt-2">
             <Button
               variant="outline"
               size="sm"
-              disabled={sessionsPage <= 1 || isLoadingSessions}
+              disabled={sessionsPage <= 1 || sessionsQuery.isFetching}
               onClick={() =>
                 setSessionsPage((p) => Math.max(1, p - 1))
               }
@@ -422,7 +476,7 @@ export function SessionsView({ userId }: { userId?: string | null }) {
               size="sm"
               disabled={
                 sessionsPage >= sessionsMeta.total_pages ||
-                isLoadingSessions
+                sessionsQuery.isFetching
               }
               onClick={() => setSessionsPage((p) => p + 1)}
             >

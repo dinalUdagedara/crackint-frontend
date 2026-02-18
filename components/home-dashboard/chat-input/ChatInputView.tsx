@@ -6,11 +6,13 @@ import ChatInput from "./ChatInput"
 type ChatInputViewProps = {
   className?: string
   onSend?: (message: string, files?: File[]) => void
+  disabled?: boolean
 }
 
 export default function ChatInputView({
   className,
   onSend,
+  disabled = false,
 }: ChatInputViewProps) {
   return (
     <footer
@@ -19,7 +21,11 @@ export default function ChatInputView({
         className
       )}
     >
-      <ChatInput placeholder="Type message" onSend={onSend} />
+      <ChatInput
+        placeholder="Type message"
+        onSend={onSend}
+        disabled={disabled}
+      />
     </footer>
   )
 }

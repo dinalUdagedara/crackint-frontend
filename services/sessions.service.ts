@@ -76,6 +76,15 @@ export async function getSessionWithMessages(
   return parseResponse<PrepSessionWithMessages>(res)
 }
 
+export async function deleteSession(
+  id: string
+): Promise<ApiResponse<{ id: string }>> {
+  const res = await fetch(`${SESSIONS_BASE}/${id}`, {
+    method: "DELETE",
+  })
+  return parseResponse<{ id: string }>(res)
+}
+
 // ---- Messages ----
 
 export async function appendMessage(

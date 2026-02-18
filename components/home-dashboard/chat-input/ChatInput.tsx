@@ -12,19 +12,21 @@ type ChatInputProps = {
   className?: string
   placeholder?: string
   onSend?: (message: string, files?: File[]) => void
+  disabled?: boolean
 }
 
 export default function ChatInput({
   className,
   placeholder = "Type message",
   onSend,
+  disabled = false,
 }: ChatInputProps) {
   const [value, setValue] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = value.trim()
-    if (trimmed) {
+    if (trimmed && !disabled) {
       onSend?.(trimmed)
       setValue("")
     }
@@ -45,6 +47,7 @@ export default function ChatInput({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         className="min-w-0 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
         aria-label="Message"
       />
@@ -52,6 +55,7 @@ export default function ChatInput({
         type="submit"
         variant="ghost"
         size="icon"
+        disabled={disabled}
         className="size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
         aria-label="Send message"
       >

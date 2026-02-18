@@ -135,3 +135,19 @@ export interface MessageCreate {
 export interface PrepSessionWithMessages extends PrepSession {
   messages: Message[];
 }
+
+// ---- Session Q&A (LLM) ----
+
+export interface NextQuestionPayload {
+  question: string;
+  difficulty?: string | null;
+  question_type?: string | null;
+  message_id: string;
+}
+
+export interface EvaluateAnswerPayload {
+  feedback: string;
+  score: number;
+  dimension_tags: string[];
+  message_id: string;
+}

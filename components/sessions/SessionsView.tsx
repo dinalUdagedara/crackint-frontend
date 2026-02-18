@@ -53,7 +53,16 @@ function formatDate(iso: string): string {
 }
 
 function getSessionTitle(session: PrepSession) {
+  const summary = session.summary as { [key: string]: unknown } | null
+  const title =
+    (summary && typeof summary.title === "string" && summary.title.trim()) || null
+  if (title) return title
   return `${session.mode} • ${session.status}`
+}
+
+function formatReadiness(score: number | null) {
+  if (score == null) return "-"
+  return Math.round(score)
 }
 
 export function SessionsView({ userId }: { userId?: string | null }) {
@@ -102,6 +111,7 @@ export function SessionsView({ userId }: { userId?: string | null }) {
     },
     onSuccess: (res) => {
       void queryClient.invalidateQueries({ queryKey: ["sessions"] })
+      void queryClient.invalidateQueries({ queryKey: ["sessions", "recent"] })
       toast.success("Session created")
       router.push(`/sessions/${res.payload!.id}`)
     },
@@ -120,6 +130,7 @@ export function SessionsView({ userId }: { userId?: string | null }) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["sessions"] })
+      void queryClient.invalidateQueries({ queryKey: ["sessions", "recent"] })
       toast.success("Session deleted")
     },
     onError: (err) => {
@@ -396,7 +407,9 @@ export function SessionsView({ userId }: { userId?: string | null }) {
                             {session.status}
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">
-                            {session.readiness_score ?? "-"}
+                            <span title="Average feedback score (0–100)">
+                              {formatReadiness(session.readiness_score)}
+                            </span>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">
                             {formatDate(session.created_at)}

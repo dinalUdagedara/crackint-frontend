@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TruncatedText } from "@/components/ui/truncated-text"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +35,10 @@ import { deleteSession, listSessions } from "@/services/sessions.service"
 import type { PrepSession } from "@/types/api.types"
 
 function formatSessionLabel(session: PrepSession): string {
+  const summary = session.summary as { [key: string]: unknown } | null
+  const title =
+    (summary && typeof summary.title === "string" && summary.title.trim()) || null
+  if (title) return title
   const modeLabel =
     session.mode === "QUICK_PRACTICE" ? "Quick practice" : "Targeted"
   return `${modeLabel} • ${session.status}`
@@ -66,6 +71,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     onSuccess: (_, id) => {
       void queryClient.invalidateQueries({ queryKey: ["sessions"] })
+      void queryClient.invalidateQueries({ queryKey: ["sessions", "recent"] })
       setDeleteTarget(null)
       toast.success("Session deleted")
       if (pathname === `/sessions/${id}`) {
@@ -137,13 +143,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuItem key={session.id}>
                     <SidebarMenuButton
                       asChild
-                      tooltip={label}
                       isActive={isActive}
                       className="pr-8"
                     >
                       <Link href={href}>
                         <MessageCircle className="size-4 shrink-0" />
-                        <span className="truncate">{label}</span>
+                        <TruncatedText
+                          text={label}
+                          maxChars={20}
+                          className="text-sm"
+                        />
                       </Link>
                     </SidebarMenuButton>
                     <SidebarMenuAction

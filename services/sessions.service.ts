@@ -7,6 +7,8 @@ import type {
   Message,
   MessageCreate,
   MessageListPayload,
+  NextQuestionPayload,
+  EvaluateAnswerPayload,
 } from "@/types/api.types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
@@ -74,6 +76,30 @@ export async function getSessionWithMessages(
 ): Promise<ApiResponse<PrepSessionWithMessages>> {
   const res = await fetch(`${SESSIONS_BASE}/${id}/with-messages`)
   return parseResponse<PrepSessionWithMessages>(res)
+}
+
+export async function postNextQuestion(
+  sessionId: string,
+  body?: { question_type?: string; role_level?: string }
+): Promise<ApiResponse<NextQuestionPayload>> {
+  const res = await fetch(`${SESSIONS_BASE}/${sessionId}/next-question`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  })
+  return parseResponse<NextQuestionPayload>(res)
+}
+
+export async function postEvaluateAnswer(
+  sessionId: string,
+  answer: string
+): Promise<ApiResponse<EvaluateAnswerPayload>> {
+  const res = await fetch(`${SESSIONS_BASE}/${sessionId}/evaluate-answer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answer }),
+  })
+  return parseResponse<EvaluateAnswerPayload>(res)
 }
 
 export async function deleteSession(

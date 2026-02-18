@@ -17,6 +17,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { TruncatedText } from "@/components/ui/truncated-text"
 
 const footerItems = [
   { title: "Clear conversations", href: "#", icon: Trash2 },
@@ -40,7 +41,11 @@ export function SidebarFooter() {
               <SidebarMenuButton asChild tooltip={item.title}>
                 <Link href={item.href}>
                   <Icon />
-                  <span>{item.title}</span>
+                  <TruncatedText
+                    text={item.title}
+                    maxChars={18}
+                    className="text-xs"
+                  />
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

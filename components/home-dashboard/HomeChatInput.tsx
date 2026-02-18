@@ -44,6 +44,7 @@ export function HomeChatInput() {
     },
     onSuccess: ({ sessionId }) => {
       void queryClient.invalidateQueries({ queryKey: ["sessions"] })
+      void queryClient.invalidateQueries({ queryKey: ["sessions", "recent"] })
       toast.success("Session started")
       router.push(`/sessions/${sessionId}`)
     },

@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
+import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   appendMessage,
+  getSession,
   getSessionWithMessages,
+  postEvaluateAnswer,
+  postNextQuestion,
 } from "@/services/sessions.service"
 import type {
   Message,
@@ -30,18 +34,16 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <div
-      className={`flex w-full ${
-        isUser ? "justify-end" : "justify-start"
-      }`}
+      className={`flex w-full ${isUser ? "justify-end" : "justify-start"
+        }`}
     >
       <div
-        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm shadow-sm ${
-          isUser
+        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm shadow-sm ${isUser
             ? "bg-primary text-primary-foreground"
             : isFeedback
               ? "bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100"
               : "bg-muted text-foreground"
-        }`}
+          }`}
       >
         <div className="whitespace-pre-wrap">{message.content}</div>
       </div>
@@ -107,13 +109,99 @@ export function SessionChatView() {
 
   const canSend = input.trim().length > 0 && !isSending
 
+  async function refreshSession() {
+    if (!sessionId) return
+    try {
+      const res = await getSessionWithMessages(sessionId)
+      if (res.success && res.payload) {
+        setSession(res.payload)
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to refresh session"
+      )
+    }
+  }
+
+  const nextQuestionMutation = useMutation({
+    mutationFn: async () => {
+      if (!sessionId) {
+        throw new Error("Session not found")
+      }
+      const res = await postNextQuestion(sessionId)
+      if (!res.success || !res.payload) {
+        throw new Error(res.message || "Failed to get next question.")
+      }
+      return res.payload
+    },
+    onSuccess: async () => {
+      toast.success("Next question generated")
+      await refreshSession()
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to get next question.")
+    },
+  })
+
+  const evaluateAnswerMutation = useMutation({
+    mutationFn: async (answer: string) => {
+      if (!sessionId) {
+        throw new Error("Session not found")
+      }
+      const trimmed = answer.trim()
+      if (!trimmed) {
+        throw new Error("Please enter an answer to evaluate.")
+      }
+
+      // Store the user's answer message first
+      await appendMessage(sessionId, {
+        sender: "USER",
+        type: "ANSWER",
+        content: trimmed,
+        metadata: {},
+      })
+
+      const res = await postEvaluateAnswer(sessionId, trimmed)
+      if (!res.success || !res.payload) {
+        throw new Error(res.message || "Failed to evaluate answer.")
+      }
+      return res.payload
+    },
+    onSuccess: async () => {
+      toast.success("Answer evaluated")
+      await refreshSession()
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to evaluate answer.")
+    },
+  })
+
   async function handleSendMessage() {
     if (!sessionId || !canSend) return
 
+    const trimmed = input.trim()
+    const lastMessage =
+      session && session.messages && session.messages.length > 0
+        ? session.messages[session.messages.length - 1]
+        : null
+
+    // If the last message was an ASSISTANT QUESTION, treat this as an answer
+    if (
+      lastMessage &&
+      lastMessage.sender === "ASSISTANT" &&
+      lastMessage.type === "QUESTION"
+    ) {
+      if (evaluateAnswerMutation.isPending) return
+      evaluateAnswerMutation.mutate(trimmed)
+      return
+    }
+
+    // Otherwise, treat as a user question / prompt and store it,
+    // then optionally ask the next question from the agent.
     const body: MessageCreate = {
       sender: "USER",
       type: "QUESTION",
-      content: input.trim(),
+      content: trimmed,
       metadata: {},
     }
 
@@ -125,12 +213,16 @@ export function SessionChatView() {
         setSession((prev) =>
           prev
             ? {
-                ...prev,
-                messages: [...(prev.messages ?? []), newMessage],
-              }
+              ...prev,
+              messages: [...(prev.messages ?? []), newMessage],
+            }
             : prev
         )
         setInput("")
+        // After a user prompt, we can ask the agent for the next question
+        if (!nextQuestionMutation.isPending) {
+          nextQuestionMutation.mutate()
+        }
       } else {
         toast.error("Failed to send message.")
       }
@@ -164,6 +256,20 @@ export function SessionChatView() {
 
   if (!session) return null
 
+  const summary = session.summary as { [key: string]: unknown } | null
+  const sessionTitle =
+    (summary && typeof summary.title === "string" && summary.title.trim()) ||
+    `${session.mode} • ${session.status}`
+
+  const lastMessage =
+    session.messages && session.messages.length > 0
+      ? session.messages[session.messages.length - 1]
+      : null
+  const canShowNextQuestionButton =
+    lastMessage &&
+    lastMessage.sender === "ASSISTANT" &&
+    lastMessage.type === "FEEDBACK"
+
   return (
     <div className="flex h-full flex-col gap-4">
       <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm">
@@ -173,7 +279,7 @@ export function SessionChatView() {
               Prep session
             </p>
             <p className="text-sm font-semibold">
-              {session.mode} • {session.status}
+              {sessionTitle}
             </p>
           </div>
           <div className="text-right text-xs text-muted-foreground">
@@ -197,10 +303,35 @@ export function SessionChatView() {
           <span>
             Readiness score:{" "}
             {session.readiness_score != null
-              ? session.readiness_score
+              ? Math.round(session.readiness_score)
               : "Not computed yet"}
           </span>
         </div>
+        {session.summary && (
+          <div className="mt-3 grid gap-3 text-xs text-muted-foreground md:grid-cols-2">
+            {typeof (session.summary as any).strengths === "string" && (
+              <div>
+                <p className="font-medium text-foreground text-xs">
+                  Strengths
+                </p>
+                <p className="mt-1">
+                  {(session.summary as any).strengths as string}
+                </p>
+              </div>
+            )}
+            {typeof (session.summary as any).areas_for_improvement ===
+              "string" && (
+                <div>
+                  <p className="font-medium text-foreground text-xs">
+                    Areas for improvement
+                  </p>
+                  <p className="mt-1">
+                    {(session.summary as any).areas_for_improvement as string}
+                  </p>
+                </div>
+              )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden rounded-lg border bg-background">
@@ -234,20 +365,51 @@ export function SessionChatView() {
             Messages are stored as part of this session so you can review your
             practice later.
           </p>
-          <Button
-            size="sm"
-            onClick={handleSendMessage}
-            disabled={!canSend}
-          >
-            {isSending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              "Send"
+          <div className="flex items-center gap-2">
+            {canShowNextQuestionButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!nextQuestionMutation.isPending && sessionId) {
+                    nextQuestionMutation.mutate()
+                  }
+                }}
+                disabled={
+                  nextQuestionMutation.isPending || evaluateAnswerMutation.isPending
+                }
+              >
+                {nextQuestionMutation.isPending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Next question"
+                )}
+              </Button>
             )}
-          </Button>
+            <Button
+              size="sm"
+              onClick={handleSendMessage}
+              disabled={
+                !canSend ||
+                nextQuestionMutation.isPending ||
+                evaluateAnswerMutation.isPending
+              }
+            >
+              {isSending ||
+              nextQuestionMutation.isPending ||
+              evaluateAnswerMutation.isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send"
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

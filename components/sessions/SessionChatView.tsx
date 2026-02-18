@@ -5,16 +5,9 @@ import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
-import {
-  appendMessage,
-  getSession,
-  getSessionWithMessages,
-  postEvaluateAnswer,
-  postNextQuestion,
-} from "@/services/sessions.service"
+import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
 import type {
   Message,
-  MessageCreate,
   PrepSessionWithMessages,
 } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
@@ -62,8 +55,6 @@ export function SessionChatView() {
   const [error, setError] = useState<string | null>(null)
 
   const [input, setInput] = useState("")
-  const [isSending, setIsSending] = useState(false)
-
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -107,7 +98,7 @@ export function SessionChatView() {
     }
   }, [session?.messages?.length])
 
-  const canSend = input.trim().length > 0 && !isSending
+  const canSend = input.trim().length > 0
 
   async function refreshSession() {
     if (!sessionId) return
@@ -123,116 +114,45 @@ export function SessionChatView() {
     }
   }
 
-  const nextQuestionMutation = useMutation({
-    mutationFn: async () => {
+  const chatMutation = useMutation({
+    mutationFn: async (content: string) => {
       if (!sessionId) {
         throw new Error("Session not found")
       }
-      const res = await postNextQuestion(sessionId)
-      if (!res.success || !res.payload) {
-        throw new Error(res.message || "Failed to get next question.")
-      }
-      return res.payload
-    },
-    onSuccess: async () => {
-      toast.success("Next question generated")
-      await refreshSession()
-    },
-    onError: (err) => {
-      toast.error(err.message || "Failed to get next question.")
-    },
-  })
-
-  const evaluateAnswerMutation = useMutation({
-    mutationFn: async (answer: string) => {
-      if (!sessionId) {
-        throw new Error("Session not found")
-      }
-      const trimmed = answer.trim()
+      const trimmed = content.trim()
       if (!trimmed) {
-        throw new Error("Please enter an answer to evaluate.")
+        throw new Error("Please enter a message to send.")
       }
 
-      // Store the user's answer message first
-      await appendMessage(sessionId, {
-        sender: "USER",
-        type: "ANSWER",
-        content: trimmed,
-        metadata: {},
-      })
-
-      const res = await postEvaluateAnswer(sessionId, trimmed)
+      const res = await postChatTurn(sessionId, trimmed)
       if (!res.success || !res.payload) {
-        throw new Error(res.message || "Failed to evaluate answer.")
+        throw new Error(res.message || "Failed to send message.")
       }
       return res.payload
     },
-    onSuccess: async () => {
-      toast.success("Answer evaluated")
-      await refreshSession()
+    onSuccess: async (payload) => {
+      toast.success("Message sent")
+      setInput("")
+      // Optimistically append new messages if we already have a session in memory,
+      // otherwise fall back to full refresh.
+      if (session && payload?.new_messages?.length) {
+        setSession({
+          ...session,
+          messages: [...session.messages, ...payload.new_messages],
+        })
+      } else {
+        await refreshSession()
+      }
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to evaluate answer.")
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to send message.")
     },
   })
 
   async function handleSendMessage() {
-    if (!sessionId || !canSend) return
+    if (!sessionId || !canSend || chatMutation.isPending) return
 
-    const trimmed = input.trim()
-    const lastMessage =
-      session && session.messages && session.messages.length > 0
-        ? session.messages[session.messages.length - 1]
-        : null
-
-    // If the last message was an ASSISTANT QUESTION, treat this as an answer
-    if (
-      lastMessage &&
-      lastMessage.sender === "ASSISTANT" &&
-      lastMessage.type === "QUESTION"
-    ) {
-      if (evaluateAnswerMutation.isPending) return
-      evaluateAnswerMutation.mutate(trimmed)
-      return
-    }
-
-    // Otherwise, treat as a user question / prompt and store it,
-    // then optionally ask the next question from the agent.
-    const body: MessageCreate = {
-      sender: "USER",
-      type: "QUESTION",
-      content: trimmed,
-      metadata: {},
-    }
-
-    setIsSending(true)
-    try {
-      const res = await appendMessage(sessionId, body)
-      if (res.success && res.payload) {
-        const newMessage = res.payload
-        setSession((prev) =>
-          prev
-            ? {
-              ...prev,
-              messages: [...(prev.messages ?? []), newMessage],
-            }
-            : prev
-        )
-        setInput("")
-        // After a user prompt, we can ask the agent for the next question
-        if (!nextQuestionMutation.isPending) {
-          nextQuestionMutation.mutate()
-        }
-      } else {
-        toast.error("Failed to send message.")
-      }
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to send message."
-      )
-    } finally {
-      setIsSending(false)
-    }
+    chatMutation.mutate(input)
   }
 
   if (isLoading && !session) {
@@ -260,15 +180,6 @@ export function SessionChatView() {
   const sessionTitle =
     (summary && typeof summary.title === "string" && summary.title.trim()) ||
     `${session.mode} • ${session.status}`
-
-  const lastMessage =
-    session.messages && session.messages.length > 0
-      ? session.messages[session.messages.length - 1]
-      : null
-  const canShowNextQuestionButton =
-    lastMessage &&
-    lastMessage.sender === "ASSISTANT" &&
-    lastMessage.type === "FEEDBACK"
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -365,6 +276,7 @@ export function SessionChatView() {
           placeholder="Type your question or answer here..."
           rows={3}
           className="text-sm"
+          disabled={chatMutation.isPending}
         />
         <div className="flex items-center justify-between gap-3 pt-1">
           <p className="text-[11px] text-muted-foreground">
@@ -372,41 +284,14 @@ export function SessionChatView() {
             practice later.
           </p>
           <div className="flex items-center gap-2">
-            {canShowNextQuestionButton && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (!nextQuestionMutation.isPending && sessionId) {
-                    nextQuestionMutation.mutate()
-                  }
-                }}
-                disabled={
-                  nextQuestionMutation.isPending || evaluateAnswerMutation.isPending
-                }
-              >
-                {nextQuestionMutation.isPending ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  "Next question"
-                )}
-              </Button>
-            )}
             <Button
               size="sm"
               onClick={handleSendMessage}
               disabled={
-                !canSend ||
-                nextQuestionMutation.isPending ||
-                evaluateAnswerMutation.isPending
+                !canSend || chatMutation.isPending
               }
             >
-              {isSending ||
-              nextQuestionMutation.isPending ||
-              evaluateAnswerMutation.isPending ? (
+              {chatMutation.isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   Sending...

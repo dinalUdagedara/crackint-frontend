@@ -147,7 +147,20 @@ export interface NextQuestionPayload {
 
 export interface EvaluateAnswerPayload {
   feedback: string;
-  score: number;
-  dimension_tags: string[];
+  score: number | null;
+  dimension_tags: string[] | null;
   message_id: string;
+}
+
+export interface SendReplyPayload {
+  user_message_id: string;
+  feedback: string | null;
+  score: number | null;
+  dimension_tags: string[] | null;
+  message_id: string | null;
+  redirect: boolean;
+}
+
+export interface ChatTurnPayload {
+  new_messages: Message[];
 }

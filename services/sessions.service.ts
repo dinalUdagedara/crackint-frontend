@@ -9,6 +9,8 @@ import type {
   MessageListPayload,
   NextQuestionPayload,
   EvaluateAnswerPayload,
+  SendReplyPayload,
+  ChatTurnPayload,
 } from "@/types/api.types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
@@ -100,6 +102,30 @@ export async function postEvaluateAnswer(
     body: JSON.stringify({ answer }),
   })
   return parseResponse<EvaluateAnswerPayload>(res)
+}
+
+export async function postSendReply(
+  sessionId: string,
+  content: string
+): Promise<ApiResponse<SendReplyPayload>> {
+  const res = await fetch(`${SESSIONS_BASE}/${sessionId}/send`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  })
+  return parseResponse<SendReplyPayload>(res)
+}
+
+export async function postChatTurn(
+  sessionId: string,
+  content: string
+): Promise<ApiResponse<ChatTurnPayload>> {
+  const res = await fetch(`${SESSIONS_BASE}/${sessionId}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  })
+  return parseResponse<ChatTurnPayload>(res)
 }
 
 export async function deleteSession(

@@ -342,10 +342,16 @@ export function SessionChatView() {
                 <MessageBubble key={msg.id} message={msg} />
               ))
             ) : (
-              <p className="text-center text-xs text-muted-foreground">
-                No messages yet. Start by asking a question or answering a
-                prompt.
-              </p>
+              <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-3 text-center">
+                <p className="text-base font-medium text-foreground">
+                  Start your practice
+                </p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Type a message below to get your first interview question, or
+                  say something like &quot;Hi&quot; to begin. Then answer each
+                  question to receive feedback and improve.
+                </p>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>

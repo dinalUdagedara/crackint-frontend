@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Loader2 } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -47,6 +48,7 @@ function MessageBubble({ message }: { message: Message }) {
 export function SessionChatView() {
   const params = useParams<{ id: string }>()
   const sessionId = params?.id
+  const { data: authSession } = useSession()
 
   const [session, setSession] = useState<PrepSessionWithMessages | null>(
     null
@@ -65,7 +67,7 @@ export function SessionChatView() {
       setIsLoading(true)
       setError(null)
       try {
-        const res = await getSessionWithMessages(sessionId)
+        const res = await getSessionWithMessages(sessionId, authSession?.accessToken)
         if (!isMounted) return
         if (res.success && res.payload) {
           setSession(res.payload)
@@ -90,7 +92,7 @@ export function SessionChatView() {
     return () => {
       isMounted = false
     }
-  }, [sessionId])
+  }, [sessionId, authSession?.accessToken])
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -103,7 +105,7 @@ export function SessionChatView() {
   async function refreshSession() {
     if (!sessionId) return
     try {
-      const res = await getSessionWithMessages(sessionId)
+      const res = await getSessionWithMessages(sessionId, authSession?.accessToken)
       if (res.success && res.payload) {
         setSession(res.payload)
       }
@@ -124,7 +126,7 @@ export function SessionChatView() {
         throw new Error("Please enter a message to send.")
       }
 
-      const res = await postChatTurn(sessionId, trimmed)
+      const res = await postChatTurn(sessionId, trimmed, authSession?.accessToken)
       if (!res.success || !res.payload) {
         throw new Error(res.message || "Failed to send message.")
       }

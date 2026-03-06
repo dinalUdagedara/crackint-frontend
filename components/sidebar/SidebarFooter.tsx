@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { signIn, signOut, useSession } from "next-auth/react"
 import {
   Briefcase,
   ClipboardList,
@@ -19,18 +20,20 @@ import {
 } from "@/components/ui/sidebar"
 import { TruncatedText } from "@/components/ui/truncated-text"
 
-const footerItems = [
-  { title: "Clear conversations", href: "#", icon: Trash2 },
-  { title: "CV Checker", href: "#", icon: FileCheck },
-  { title: "CV Upload", href: "/cv-upload", icon: FileUp },
-  { title: "Job Poster", href: "/job-upload", icon: ClipboardList },
-  { title: "Admin", href: "/admin", icon: LayoutDashboard },
-  { title: "My account", href: "#", icon: User },
-  { title: "Job Tracker", href: "#", icon: Briefcase },
-  { title: "Log out", href: "#", icon: LogOut },
-]
-
 export function SidebarFooter() {
+  const { data: session, status } = useSession()
+  const isAuthenticated = !!session
+
+  const footerItems = [
+    { title: "Clear conversations", href: "#", icon: Trash2, type: "link" as const },
+    { title: "CV Checker", href: "#", icon: FileCheck, type: "link" as const },
+    { title: "CV Upload", href: "/cv-upload", icon: FileUp, type: "link" as const },
+    { title: "Job Poster", href: "/job-upload", icon: ClipboardList, type: "link" as const },
+    { title: "Admin", href: "/admin", icon: LayoutDashboard, type: "link" as const },
+    { title: "Job Tracker", href: "#", icon: Briefcase, type: "link" as const },
+    // Auth-related items are handled separately below
+  ]
+
   return (
     <UISidebarFooter>
       <SidebarMenu>
@@ -51,6 +54,32 @@ export function SidebarFooter() {
             </SidebarMenuItem>
           )
         })}
+        {status !== "loading" && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip={isAuthenticated ? "Log out" : "Sign in"}
+              onClick={() => {
+                if (isAuthenticated) {
+                  signOut({ callbackUrl: "/", redirect: true })
+                } else {
+                  // Let NextAuth show the provider list; you can pass "google" to go straight to Google.
+                  signIn()
+                }
+              }}
+            >
+              {isAuthenticated ? <LogOut /> : <User />}
+              <TruncatedText
+                text={
+                  isAuthenticated
+                    ? session?.user?.name || session?.user?.email || "Log out"
+                    : "Sign in"
+                }
+                maxChars={18}
+                className="text-xs"
+              />
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
       </SidebarMenu>
     </UISidebarFooter>
   )

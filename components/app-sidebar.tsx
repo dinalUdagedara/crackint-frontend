@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useSession } from "next-auth/react"
 import { Loader2, MessageCircle, Plus, Trash2 } from "lucide-react"
 import { SidebarFooter } from "@/components/sidebar/SidebarFooter"
 import {
@@ -48,22 +49,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { data: authSession } = useSession()
 
   const [deleteTarget, setDeleteTarget] = React.useState<PrepSession | null>(
     null
   )
 
   const recentSessionsQuery = useQuery({
-    queryKey: ["sessions", "recent"],
+    queryKey: ["sessions", "recent", authSession?.accessToken ?? "anon"],
     queryFn: async (): Promise<PrepSession[]> => {
-      const res = await listSessions(1, 10)
+      const res = await listSessions(1, 10, undefined, authSession?.accessToken)
       return res.payload ?? []
     },
   })
 
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await deleteSession(id)
+      const res = await deleteSession(id, authSession?.accessToken)
       if (!res.success) {
         throw new Error(res.message ?? "Failed to delete session.")
       }

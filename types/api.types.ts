@@ -164,3 +164,29 @@ export interface SendReplyPayload {
 export interface ChatTurnPayload {
   new_messages: Message[];
 }
+
+// ---- Auth (backend JWT) ----
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  created_at: string;
+}
+
+export interface RegisterBody {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface LoginBody {
+  email: string;
+  password: string;
+}
+
+export interface LoginPayload {
+  access_token: string;
+  token_type: "bearer";
+  user: User;
+}

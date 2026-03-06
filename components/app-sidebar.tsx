@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { Loader2, MessageCircle, Plus, Trash2 } from "lucide-react"
 import { SidebarFooter } from "@/components/sidebar/SidebarFooter"
 import {
@@ -49,23 +50,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data: authSession } = useSession()
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
 
   const [deleteTarget, setDeleteTarget] = React.useState<PrepSession | null>(
     null
   )
 
   const recentSessionsQuery = useQuery({
-    queryKey: ["sessions", "recent", authSession?.accessToken ?? "anon"],
+    queryKey: ["sessions", "recent"],
     queryFn: async (): Promise<PrepSession[]> => {
-      const res = await listSessions(1, 10, undefined, authSession?.accessToken)
+      const res = await listSessions(axiosAuth, 1, 10)
       return res.payload ?? []
     },
+    enabled: sessionStatus === "authenticated",
   })
 
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await deleteSession(id, authSession?.accessToken)
+      const res = await deleteSession(axiosAuth, id)
       if (!res.success) {
         throw new Error(res.message ?? "Failed to delete session.")
       }

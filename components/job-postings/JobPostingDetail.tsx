@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Loader2, ArrowLeft } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getJobPosting } from "@/services/job-postings.service"
 import type { JobPosting } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
@@ -20,20 +22,25 @@ export function JobPostingDetail() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const id = params?.id
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
 
   const [job, setJob] = useState<JobPosting | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || sessionStatus !== "authenticated") {
+      if (sessionStatus === "unauthenticated") setIsLoading(false)
+      return
+    }
     let isMounted = true
 
     async function fetchJob() {
       setIsLoading(true)
       setError(null)
       try {
-        const res = await getJobPosting(id)
+        const res = await getJobPosting(axiosAuth, id)
         if (!isMounted) return
         if (res.success && res.payload) {
           setJob(res.payload)
@@ -55,7 +62,7 @@ export function JobPostingDetail() {
     return () => {
       isMounted = false
     }
-  }, [id])
+  }, [id, sessionStatus, axiosAuth])
 
   return (
     <div className="space-y-4">

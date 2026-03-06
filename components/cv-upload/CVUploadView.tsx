@@ -7,6 +7,7 @@ import CVFileDropZone from "./CVFileDropZone"
 import CVPasteArea from "./CVPasteArea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EditEntitiesDialog } from "./EditEntitiesDialog"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import {
   extractResumeFromFile,
   extractResumeFromText,
@@ -125,6 +126,7 @@ function ExtractedEntitiesCard({
 }
 
 export default function CVUploadView() {
+  const axiosAuth = useAxiosAuth()
   const [pasteText, setPasteText] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -192,7 +194,7 @@ export default function CVUploadView() {
         setShowReplaceConfirm(true)
       } else {
         performExtraction(() =>
-          extractResumeFromFile(selectedFile, useEnhancedExtraction)
+          extractResumeFromFile(axiosAuth, selectedFile, useEnhancedExtraction)
         )
       }
     } else if (trimmed) {
@@ -201,7 +203,7 @@ export default function CVUploadView() {
         setShowReplaceConfirm(true)
       } else {
         performExtraction(() =>
-          extractResumeFromText(trimmed, useEnhancedExtraction)
+          extractResumeFromText(axiosAuth, trimmed, useEnhancedExtraction)
         )
       }
     }
@@ -212,20 +214,21 @@ export default function CVUploadView() {
     canExtract,
     performExtraction,
     useEnhancedExtraction,
+    axiosAuth,
   ])
 
   const handleConfirmReplace = useCallback(async () => {
     if (!pendingReplace) return
     if (pendingReplace.type === "file") {
       await performExtraction(() =>
-        extractResumeFromFile(pendingReplace.file, useEnhancedExtraction)
+        extractResumeFromFile(axiosAuth, pendingReplace.file, useEnhancedExtraction)
       )
     } else {
       await performExtraction(() =>
-        extractResumeFromText(pendingReplace.text, useEnhancedExtraction)
+        extractResumeFromText(axiosAuth, pendingReplace.text, useEnhancedExtraction)
       )
     }
-  }, [pendingReplace, performExtraction, useEnhancedExtraction])
+  }, [pendingReplace, performExtraction, useEnhancedExtraction, axiosAuth])
 
   const handleCancelReplace = useCallback(() => {
     setShowReplaceConfirm(false)
@@ -283,6 +286,7 @@ export default function CVUploadView() {
                 onEdit={() => setShowEditDialog(true)}
               />
               <EditEntitiesDialog
+                axiosAuth={axiosAuth}
                 resume={
                   resumeForEdit ?? {
                     id: "",

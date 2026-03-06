@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
 import { Loader2, Trash2 } from "lucide-react"
+import { useSession } from "next-auth/react"
 import { toast } from "sonner"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { listResumes } from "@/services/resume-uploader.service"
 import { listJobPostings } from "@/services/job-postings.service"
 import {
@@ -66,10 +67,10 @@ function formatReadiness(score: number | null) {
   return Math.round(score)
 }
 
-export function SessionsView({ userId: userIdProp }: { userId?: string | null }) {
+export function SessionsView({ userId: _userIdProp }: { userId?: string | null }) {
   const router = useRouter()
-  const { data: authSession } = useSession()
-  const userId = userIdProp ?? (authSession?.accessToken ? authSession.user?.id : null) ?? null
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
 
   const [sessionsPage, setSessionsPage] = useState(1)
 
@@ -82,32 +83,30 @@ export function SessionsView({ userId: userIdProp }: { userId?: string | null })
   const queryClient = useQueryClient()
 
   const sessionsQuery = useQuery({
-    queryKey: [
-      "sessions",
-      "list",
-      { page: sessionsPage, pageSize: 20, userId, token: authSession?.accessToken ?? "anon" },
-    ],
-    queryFn: () => listSessions(sessionsPage, 20, userId ?? undefined, authSession?.accessToken),
+    queryKey: ["sessions", "list", { page: sessionsPage, pageSize: 20 }],
+    queryFn: () => listSessions(axiosAuth, sessionsPage, 20),
     placeholderData: (prev) => prev,
+    enabled: sessionStatus === "authenticated",
   })
 
   const optionsQuery = useQuery({
-    queryKey: ["sessions", "options", { userId }],
+    queryKey: ["sessions", "options"],
     queryFn: async (): Promise<{ resumes: Resume[]; jobPostings: JobPosting[] }> => {
       const [resumesRes, jobsRes] = await Promise.all([
-        listResumes(1, 100, userId ?? undefined),
-        listJobPostings(1, 100, userId ?? undefined),
+        listResumes(axiosAuth, 1, 100),
+        listJobPostings(axiosAuth, 1, 100),
       ])
       return {
         resumes: resumesRes.payload ?? [],
         jobPostings: jobsRes.payload ?? [],
       }
     },
+    enabled: sessionStatus === "authenticated",
   })
 
   const createSessionMutation = useMutation({
     mutationFn: async (body: PrepSessionCreate) => {
-      const res = await createSession(body, authSession?.accessToken)
+      const res = await createSession(axiosAuth, body)
       if (!res.success || !res.payload) {
         throw new Error(res.message || "Failed to create session.")
       }
@@ -126,7 +125,7 @@ export function SessionsView({ userId: userIdProp }: { userId?: string | null })
 
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await deleteSession(id, authSession?.accessToken)
+      const res = await deleteSession(axiosAuth, id)
       if (!res.success) {
         throw new Error(res.message || "Failed to delete session.")
       }
@@ -158,7 +157,7 @@ export function SessionsView({ userId: userIdProp }: { userId?: string | null })
 
     try {
       await createSessionMutation.mutateAsync({
-        user_id: userId ?? null,
+        user_id: null,
         resume_id:
           mode === "TARGETED" ? selectedResumeId || null : null,
         job_posting_id:

@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react"
 import { Loader2, X } from "lucide-react"
+import type { AxiosInstance } from "axios"
 import {
   Dialog,
   DialogContent,
@@ -205,6 +206,7 @@ function EntityTagInput({
 }
 
 type EditEntitiesDialogProps = {
+  axiosAuth: AxiosInstance
   resume: Resume
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -212,6 +214,7 @@ type EditEntitiesDialogProps = {
 }
 
 export function EditEntitiesDialog({
+  axiosAuth,
   resume,
   open,
   onOpenChange,
@@ -247,7 +250,7 @@ export function EditEntitiesDialog({
     setIsLoading(true)
     setError(null)
     try {
-      const response = await updateResumeEntities(resume.id, entities)
+      const response = await updateResumeEntities(axiosAuth, resume.id, entities)
       if (response.success && response.payload) {
         onSave(response.payload)
         onOpenChange(false)
@@ -259,7 +262,7 @@ export function EditEntitiesDialog({
     } finally {
       setIsLoading(false)
     }
-  }, [resume, entities, onSave, onOpenChange])
+  }, [axiosAuth, resume, entities, onSave, onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

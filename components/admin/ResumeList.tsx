@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Loader2, Trash2 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { listResumes, deleteAllResumes } from "@/services/resume-uploader.service"
 import type { Resume } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
@@ -35,6 +37,8 @@ function getPreview(resume: Resume): string {
 }
 
 export function ResumeList() {
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
   const [resumes, setResumes] = useState<Resume[]>([])
   const [meta, setMeta] = useState<{
     page: number
@@ -52,7 +56,7 @@ export function ResumeList() {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await listResumes(page, 20)
+      const response = await listResumes(axiosAuth, page, 20)
       if (response.success && response.payload) {
         setResumes(response.payload)
         if (response.meta) {
@@ -67,17 +71,21 @@ export function ResumeList() {
     } finally {
       setIsLoading(false)
     }
-  }, [page])
+  }, [page, axiosAuth])
 
   useEffect(() => {
-    fetchResumes()
-  }, [fetchResumes])
+    if (sessionStatus === "authenticated") {
+      fetchResumes()
+    } else if (sessionStatus === "unauthenticated") {
+      setIsLoading(false)
+    }
+  }, [sessionStatus, fetchResumes])
 
   const handleDeleteAll = useCallback(async () => {
     setIsDeleting(true)
     setError(null)
     try {
-      await deleteAllResumes()
+      await deleteAllResumes(axiosAuth)
       setShowDeleteConfirm(false)
       setResumes([])
       if (meta) setMeta({ ...meta, total_items: 0 })

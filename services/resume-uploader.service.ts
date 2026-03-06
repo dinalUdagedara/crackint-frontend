@@ -1,12 +1,10 @@
+import axios, { type AxiosInstance } from "axios"
 import type {
   ApiResponse,
   Resume,
   ResumeExtractResult,
   ResumeListPayload,
 } from "@/types/api.types"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
-const RESUMES_BASE = `${API_BASE}/api/v1/resumes`
 
 export class ResumeUploadError extends Error {
   constructor(
@@ -19,20 +17,21 @@ export class ResumeUploadError extends Error {
   }
 }
 
-async function parseResponse<T>(res: Response): Promise<ApiResponse<T>> {
-  const data = (await res.json()) as ApiResponse<T>
-  if (!res.ok) {
+function throwOnAxiosError(e: unknown): never {
+  if (axios.isAxiosError(e) && e.response) {
+    const d = (e.response.data ?? {}) as ApiResponse<unknown>
     throw new ResumeUploadError(
-      data.message ?? `Request failed with status ${res.status}`,
-      res.status,
-      data.payload
+      d.message ?? `Request failed with status ${e.response.status}`,
+      e.response.status,
+      d.payload
     )
   }
-  return data
+  throw e
 }
 
 /** Extract resume entities from a PDF or image file. Backend accepts PDF and images (PNG, JPEG, WebP). */
 export async function extractResumeFromFile(
+  axiosAuth: AxiosInstance,
   file: File,
   useEnhancedExtraction = false
 ): Promise<ApiResponse<ResumeExtractResult>> {
@@ -43,21 +42,24 @@ export async function extractResumeFromFile(
       "Only PDF and image files (PNG, JPEG, WebP) are supported. Please paste your CV text instead."
     )
   }
-
   const formData = new FormData()
   formData.append("file", file)
-
-  const url = `${RESUMES_BASE}/extract${useEnhancedExtraction ? "?validate=true" : ""}`
-  const res = await fetch(url, {
-    method: "POST",
-    body: formData,
-  })
-
-  return parseResponse<ResumeExtractResult>(res)
+  const url = `/resumes/extract${useEnhancedExtraction ? "?validate=true" : ""}`
+  try {
+    const { data } = await axiosAuth.post<ApiResponse<ResumeExtractResult>>(
+      url,
+      formData,
+      { headers: { "Content-Type": undefined } }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
 
 /** Extract resume entities from raw text. */
 export async function extractResumeFromText(
+  axiosAuth: AxiosInstance,
   text: string,
   useEnhancedExtraction = false
 ): Promise<ApiResponse<ResumeExtractResult>> {
@@ -65,50 +67,68 @@ export async function extractResumeFromText(
   if (!trimmed) {
     throw new ResumeUploadError("Please enter some CV text to extract.")
   }
-
   const formData = new FormData()
   formData.append("text", trimmed)
-
-  const url = `${RESUMES_BASE}/extract${useEnhancedExtraction ? "?validate=true" : ""}`
-  const res = await fetch(url, {
-    method: "POST",
-    body: formData,
-  })
-
-  return parseResponse<ResumeExtractResult>(res)
+  const url = `/resumes/extract${useEnhancedExtraction ? "?validate=true" : ""}`
+  try {
+    const { data } = await axiosAuth.post<ApiResponse<ResumeExtractResult>>(
+      url,
+      formData,
+      {
+        headers: { "Content-Type": undefined },
+      }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
 
 /** Update resume entity fields (PATCH). */
 export async function updateResumeEntities(
+  axiosAuth: AxiosInstance,
   resumeId: string,
   entities: Record<string, string[]>
 ): Promise<ApiResponse<Resume>> {
-  const res = await fetch(`${RESUMES_BASE}/${resumeId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entities }),
-  })
-  return parseResponse<Resume>(res)
+  try {
+    const { data } = await axiosAuth.patch<ApiResponse<Resume>>(
+      `/resumes/${resumeId}`,
+      { entities }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
 
-/** List all resumes with pagination. */
+/** List all resumes with pagination (scoped to authenticated user). */
 export async function listResumes(
+  axiosAuth: AxiosInstance,
   page = 1,
-  pageSize = 20,
-  userId?: string
+  pageSize = 20
 ): Promise<ApiResponse<ResumeListPayload>> {
-  const params = new URLSearchParams()
-  params.set("page", String(page))
-  params.set("page_size", String(pageSize))
-  if (userId) params.set("user_id", userId)
-  const res = await fetch(`${RESUMES_BASE}?${params}`)
-  return parseResponse<ResumeListPayload>(res)
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<ResumeListPayload>>(
+      "/resumes",
+      { params: { page, page_size: pageSize } }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
 
-/** Delete all resumes. */
-export async function deleteAllResumes(): Promise<
-  ApiResponse<{ deleted_count: number }>
-> {
-  const res = await fetch(RESUMES_BASE, { method: "DELETE" })
-  return parseResponse<{ deleted_count: number }>(res)
+/** Delete all resumes (scoped to authenticated user). */
+export async function deleteAllResumes(
+  axiosAuth: AxiosInstance
+): Promise<ApiResponse<{ deleted_count: number }>> {
+  try {
+    const { data } =
+      await axiosAuth.delete<ApiResponse<{ deleted_count: number }>>(
+        "/resumes"
+      )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }

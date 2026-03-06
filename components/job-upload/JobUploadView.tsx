@@ -12,6 +12,7 @@ import {
   extractJobFromText,
   JobExtractError,
 } from "@/services/job-extractor.service"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { createJobPosting } from "@/services/job-postings.service"
 import type { JobExtractPayload } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
@@ -102,7 +103,8 @@ function ExtractedJobEntitiesCard({
   )
 }
 
-export default function JobUploadView({ userId }: { userId?: string | null }) {
+export default function JobUploadView({ userId: _userId }: { userId?: string | null }) {
+  const axiosAuth = useAxiosAuth()
   const router = useRouter()
   const [pasteText, setPasteText] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -182,8 +184,8 @@ export default function JobUploadView({ userId }: { userId?: string | null }) {
         result.entities?.CITY?.[0] ??
         null
 
-      const response = await createJobPosting({
-        user_id: userId ?? null,
+      const response = await createJobPosting(axiosAuth, {
+        user_id: null,
         entities: result.entities ?? {},
         raw_text: result.raw_text ?? null,
         location,

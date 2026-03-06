@@ -1,16 +1,16 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { createSession, postChatTurn } from "@/services/sessions.service"
 import ChatInputView from "./chat-input/ChatInputView"
 
 export function HomeChatInput() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data: authSession } = useSession()
+  const axiosAuth = useAxiosAuth()
 
   const startQuickPracticeMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -19,15 +19,12 @@ export function HomeChatInput() {
         throw new Error("Please enter a message.")
       }
 
-      const createRes = await createSession(
-        {
-          user_id: authSession?.accessToken ? (authSession.user?.id as string) ?? null : null,
-          resume_id: null,
-          job_posting_id: null,
-          mode: "QUICK_PRACTICE",
-        },
-        authSession?.accessToken
-      )
+      const createRes = await createSession(axiosAuth, {
+        user_id: null,
+        resume_id: null,
+        job_posting_id: null,
+        mode: "QUICK_PRACTICE",
+      })
 
       if (!createRes.success || !createRes.payload?.id) {
         throw new Error("Failed to start session.")
@@ -35,7 +32,7 @@ export function HomeChatInput() {
 
       const sessionId = createRes.payload.id
 
-      await postChatTurn(sessionId, trimmed, authSession?.accessToken)
+      await postChatTurn(axiosAuth, sessionId, trimmed)
 
       return { sessionId }
     },

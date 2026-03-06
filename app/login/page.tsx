@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") ?? "/"
@@ -25,21 +25,43 @@ export default function LoginPage() {
       return
     }
     setIsLoading(true)
+    console.log("[auth] login page: signIn(credentials) starting for", email.trim())
     try {
       const res = await signIn("credentials", {
         email: email.trim(),
         password,
         redirect: false,
       })
+      console.log("[auth] login page: signIn result", {
+        ok: res?.ok,
+        error: res?.error,
+        status: res?.status,
+        url: res?.url,
+      })
       if (res?.error) {
-        toast.error(res.error === "CredentialsSignin" ? "Invalid email or password." : res.error)
+        console.log("[auth] login page: signIn failed, error:", res.error)
+        const message =
+          res.error === "CredentialsSignin"
+            ? "Invalid email or password."
+            : res.error === "OAuthSignin"
+              ? "Sign-in failed. Check that the backend is running and your email/password are correct. See terminal for server logs."
+              : res.error
+        toast.error(message, { duration: 6000 })
         setIsLoading(false)
         return
       }
+      if (!res?.ok) {
+        console.log("[auth] login page: signIn returned not ok, no error field")
+        toast.error("Sign in failed. Check the server logs.")
+        setIsLoading(false)
+        return
+      }
+      console.log("[auth] login page: signIn success, redirecting to", callbackUrl)
       toast.success("Signed in.")
       router.push(callbackUrl)
       router.refresh()
-    } catch {
+    } catch (err) {
+      console.error("[auth] login page: signIn exception", err instanceof Error ? err.message : err)
       toast.error("Something went wrong.")
       setIsLoading(false)
     }
@@ -107,5 +129,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   )
 }

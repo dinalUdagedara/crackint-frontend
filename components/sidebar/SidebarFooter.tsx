@@ -19,6 +19,18 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { TruncatedText } from "@/components/ui/truncated-text"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
+
+const sidebarTriggerClass =
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent disabled:pointer-events-none disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 h-8 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2"
 
 export function SidebarFooter() {
   const { data: session, status } = useSession()
@@ -31,8 +43,11 @@ export function SidebarFooter() {
     { title: "Job Poster", href: "/job-upload", icon: ClipboardList, type: "link" as const },
     { title: "Admin", href: "/admin", icon: LayoutDashboard, type: "link" as const },
     { title: "Job Tracker", href: "#", icon: Briefcase, type: "link" as const },
-    // Auth-related items are handled separately below
   ]
+
+  const accountLabel = isAuthenticated
+    ? session?.user?.name || session?.user?.email || "Account"
+    : "Sign in"
 
   return (
     <UISidebarFooter>
@@ -56,28 +71,63 @@ export function SidebarFooter() {
         })}
         {status !== "loading" && (
           <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip={isAuthenticated ? "Log out" : "Sign in"}
-              onClick={() => {
-                if (isAuthenticated) {
-                  signOut({ callbackUrl: "/", redirect: true })
-                } else {
-                  // Let NextAuth show the provider list; you can pass "google" to go straight to Google.
-                  signIn()
-                }
-              }}
-            >
-              {isAuthenticated ? <LogOut /> : <User />}
-              <TruncatedText
-                text={
-                  isAuthenticated
-                    ? session?.user?.name || session?.user?.email || "Log out"
-                    : "Sign in"
-                }
-                maxChars={18}
-                className="text-xs"
-              />
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(sidebarTriggerClass)}
+                  aria-label={isAuthenticated ? "Account menu" : "Sign in"}
+                >
+                  <User />
+                  <TruncatedText
+                    text={accountLabel}
+                    maxChars={18}
+                    className="text-xs"
+                  />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="top" className="w-56">
+                <DropdownMenuLabel>
+                  {isAuthenticated
+                    ? session?.user?.name || session?.user?.email || "Account"
+                    : "Not signed in"}
+                </DropdownMenuLabel>
+                {isAuthenticated && session?.user?.email && (
+                  <p className="px-2 pb-1 text-xs text-muted-foreground truncate">
+                    {session.user.email}
+                  </p>
+                )}
+                <DropdownMenuSeparator />
+                {isAuthenticated ? (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => {
+                      void signOut({ callbackUrl: "/", redirect: true })
+                    }}
+                  >
+                    <LogOut className="size-4" />
+                    Log out
+                  </DropdownMenuItem>
+                ) : (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        void signIn("credentials", { callbackUrl: "/" })
+                      }}
+                    >
+                      Sign in with email
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        void signIn("google", { callbackUrl: "/" })
+                      }}
+                    >
+                      Sign in with Google
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         )}
       </SidebarMenu>

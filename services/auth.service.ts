@@ -55,6 +55,26 @@ export async function login(body: LoginBody): Promise<ApiResponse<LoginPayload>>
   return data
 }
 
+/** Exchange a Google OAuth ID token for backend JWT and user. */
+export async function googleLogin(idToken: string): Promise<ApiResponse<LoginPayload>> {
+  const res = await fetch(`${AUTH_BASE}/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  })
+  if (!res.ok) {
+    const data = (await res.json()) as ApiResponse<LoginPayload> & { detail?: string | unknown }
+    const msg =
+      typeof data.detail === "string"
+        ? data.detail
+        : Array.isArray(data.detail)
+          ? (data.detail as { msg?: string }[])[0]?.msg ?? data.message ?? "Google login failed"
+          : data.message ?? `Request failed with status ${res.status}`
+    throw new Error(msg)
+  }
+  return parseResponse<LoginPayload>(res)
+}
+
 export async function getMe(accessToken: string): Promise<ApiResponse<User>> {
   const res = await fetch(`${AUTH_BASE}/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },

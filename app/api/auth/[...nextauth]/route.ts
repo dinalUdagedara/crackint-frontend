@@ -2,7 +2,7 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import GitHub from "next-auth/providers/github"
 import Google from "next-auth/providers/google"
-import { login } from "@/services/auth.service"
+import { googleLogin, login } from "@/services/auth.service"
 
 // Use a stable secret so the session cookie can be decrypted on refresh. If NEXTAUTH_SECRET
 // is missing in dev, NextAuth would use a random secret per process and you'd be logged out on refresh.
@@ -86,11 +86,24 @@ export const authOptions = {
   },
   callbacks: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async jwt({ token, user }: any) {
+    async jwt({ token, user, account }: any) {
       if (user) {
         token.accessToken = user.accessToken
         token.id = user.id
         console.log("[auth] jwt callback: user present, id:", user.id)
+      }
+      // For Google OAuth: exchange id_token for backend JWT and store it
+      if (account?.provider === "google" && account.id_token) {
+        try {
+          const res = await googleLogin(account.id_token)
+          if (res.success && res.payload) {
+            token.accessToken = res.payload.access_token
+            token.id = res.payload.user.id
+            console.log("[auth] jwt callback: Google login success, backend user id:", res.payload.user.id)
+          }
+        } catch (err) {
+          console.error("[auth] jwt callback: Google backend login failed", err)
+        }
       }
       return token
     },

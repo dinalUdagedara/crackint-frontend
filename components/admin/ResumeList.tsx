@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { Loader2, Trash2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
@@ -115,19 +116,24 @@ export function ResumeList() {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
           {meta ? `${meta.total_items} resume(s)` : "Resumes"}
         </p>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => setShowDeleteConfirm(true)}
-          disabled={resumes.length === 0 || isDeleting}
-        >
-          <Trash2 className="size-4" />
-          Delete all
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link href="/cv-upload">Upload new CV</Link>
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={resumes.length === 0 || isDeleting}
+          >
+            <Trash2 className="size-4" />
+            Delete all
+          </Button>
+        </div>
       </div>
 
       {resumes.length === 0 ? (
@@ -151,7 +157,14 @@ export function ResumeList() {
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                       {resume.id.slice(0, 8)}...
                     </td>
-                    <td className="px-4 py-3">{getPreview(resume)}</td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/resumes/${resume.id}`}
+                        className="font-medium text-foreground underline-offset-4 hover:underline"
+                      >
+                        {getPreview(resume)}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(resume.created_at)}
                     </td>

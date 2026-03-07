@@ -71,6 +71,14 @@ export interface JobPostingCreate {
   deadline: string | null;
 }
 
+/** Body for PATCH job posting: only provided fields are updated. */
+export interface JobPostingUpdate {
+  entities?: Record<string, string[]>;
+  raw_text?: string | null;
+  location?: string | null;
+  deadline?: string | null;
+}
+
 // ---- Prep sessions & messages ----
 
 export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE";
@@ -189,4 +197,41 @@ export interface LoginPayload {
   access_token: string;
   token_type: "bearer";
   user: User;
+}
+
+// ---- CV Scoring ----
+
+export interface CVScorePayload {
+  score: number;
+  breakdown: { content: number; structure: number; clarity: number };
+  suggestions: string[];
+}
+
+// ---- Skill-Gap ----
+
+export interface SkillGapAlert {
+  type: "missing_skill" | "weak_experience" | "weak_education";
+  message: string;
+  severity: "low" | "medium" | "high";
+}
+
+export interface SkillGapPayload {
+  missing_skills: string[];
+  weak_experience: boolean;
+  weak_experience_message: string | null;
+  weak_education: boolean;
+  weak_education_message: string | null;
+  suggestions: string[];
+  severity: "low" | "medium" | "high";
+  alerts: SkillGapAlert[];
+}
+
+// ---- Readiness ----
+
+export interface ReadinessPayload {
+  combined_score: number;
+  cv_score: number | null;
+  session_avg: number | null;
+  gap_severity: "low" | "medium" | "high" | null;
+  trend: "improving" | "stable" | "declining";
 }

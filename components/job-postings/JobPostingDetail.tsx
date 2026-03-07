@@ -2,12 +2,24 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, AlertTriangle, Pencil } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getJobPosting } from "@/services/job-postings.service"
-import type { JobPosting } from "@/types/api.types"
+import { EditJobPostingDialog } from "./EditJobPostingDialog"
+import { listResumes } from "@/services/resume-uploader.service"
+import { getSkillGap, MatchError } from "@/services/match.service"
+import type { JobPosting, Resume, SkillGapPayload } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
+import { useQuery } from "@tanstack/react-query"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 function formatDate(iso: string | null): string {
   if (!iso) return "-"
@@ -28,6 +40,41 @@ export function JobPostingDetail() {
   const [job, setJob] = useState<JobPosting | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedResumeId, setSelectedResumeId] = useState<string>("")
+  const [skillGapResult, setSkillGapResult] = useState<SkillGapPayload | null>(null)
+  const [skillGapError, setSkillGapError] = useState<string | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+
+  const resumesQuery = useQuery({
+    queryKey: ["resumes", "list", 1, 100],
+    queryFn: async () => {
+      const res = await listResumes(axiosAuth, 1, 100)
+      return res.payload ?? []
+    },
+    enabled: sessionStatus === "authenticated",
+  })
+
+  const resumes = (resumesQuery.data ?? []) as Resume[]
+
+  async function handleAnalyzeSkillGap() {
+    if (!id || !selectedResumeId || isAnalyzing) return
+    setIsAnalyzing(true)
+    setSkillGapError(null)
+    setSkillGapResult(null)
+    try {
+      const res = await getSkillGap(axiosAuth, selectedResumeId, id)
+      if (res.success && res.payload) {
+        setSkillGapResult(res.payload)
+      }
+    } catch (err) {
+      setSkillGapError(
+        err instanceof MatchError ? err.message : "Failed to analyze match."
+      )
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
 
   useEffect(() => {
     if (!id || sessionStatus !== "authenticated") {
@@ -94,14 +141,24 @@ export function JobPostingDetail() {
 
       {!isLoading && !error && job && (
         <div className="space-y-6">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">
-              {job.entities?.JOB_TITLE?.[0] ?? "Job posting"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {job.entities?.COMPANY?.[0] ?? "Unknown company"} •{" "}
-              {job.location ?? job.entities?.LOCATION?.[0] ?? "Location unknown"}
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold tracking-tight">
+                {job.entities?.JOB_TITLE?.[0] ?? "Job posting"}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {job.entities?.COMPANY?.[0] ?? "Unknown company"} •{" "}
+                {job.location ?? job.entities?.LOCATION?.[0] ?? "Location unknown"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEditDialog(true)}
+            >
+              <Pencil className="mr-2 size-4" />
+              Edit
+            </Button>
           </div>
 
           <div className="grid gap-4 text-sm md:grid-cols-2">
@@ -177,6 +234,120 @@ export function JobPostingDetail() {
             </div>
           </div>
 
+          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+            <h2 className="text-sm font-medium">Check match with my CV</h2>
+            <p className="text-xs text-muted-foreground">
+              Compare your resume with this job posting to see missing skills and
+              suggestions.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[200px] space-y-1.5">
+                <Label htmlFor="skill-gap-resume">Resume</Label>
+                <Select
+                  value={selectedResumeId}
+                  onValueChange={(v) => {
+                    setSelectedResumeId(v)
+                    setSkillGapError(null)
+                    setSkillGapResult(null)
+                  }}
+                  disabled={resumesQuery.isPending}
+                >
+                  <SelectTrigger id="skill-gap-resume">
+                    <SelectValue
+                      placeholder={
+                        resumesQuery.isPending
+                          ? "Loading..."
+                          : resumes.length
+                            ? "Select a resume"
+                            : "No resumes available"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resumes.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.entities?.NAME?.[0] ?? r.id.slice(0, 8) + "..."}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handleAnalyzeSkillGap}
+                disabled={!selectedResumeId || isAnalyzing}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  "Analyze"
+                )}
+              </Button>
+            </div>
+            {skillGapError && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {skillGapError}
+              </div>
+            )}
+            {skillGapResult && (
+              <div className="space-y-3 pt-2">
+                {skillGapResult.alerts.length > 0 && (
+                  <div className="space-y-2">
+                    {skillGapResult.alerts.map((a, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2 rounded-md px-3 py-2 text-sm ${
+                          a.severity === "high"
+                            ? "border border-destructive/50 bg-destructive/10 text-destructive"
+                            : a.severity === "medium"
+                              ? "border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                              : "border border-muted bg-muted/30 text-muted-foreground"
+                        }`}
+                      >
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                        {a.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {skillGapResult.missing_skills.length > 0 && (
+                  <div>
+                    <h3 className="mb-1.5 text-xs font-medium text-muted-foreground">
+                      Missing skills
+                    </h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {skillGapResult.missing_skills.map((s) => (
+                        <span
+                          key={s}
+                          className="inline-flex rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs text-destructive"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {skillGapResult.suggestions.length > 0 && (
+                  <div>
+                    <h3 className="mb-1.5 text-xs font-medium text-muted-foreground">
+                      Suggestions
+                    </h3>
+                    <ul className="list-inside list-disc space-y-0.5 text-sm text-muted-foreground">
+                      {skillGapResult.suggestions.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <h2 className="text-sm font-medium">Raw job description</h2>
             <div className="rounded-lg border bg-muted/10 p-4 text-sm whitespace-pre-wrap">
@@ -187,6 +358,18 @@ export function JobPostingDetail() {
               )}
             </div>
           </div>
+
+          <EditJobPostingDialog
+            key={job.updated_at ?? job.id}
+            axiosAuth={axiosAuth}
+            job={job}
+            open={showEditDialog}
+            onOpenChange={setShowEditDialog}
+            onSave={(updated) => {
+              setJob(updated)
+              setShowEditDialog(false)
+            }}
+          />
         </div>
       )}
     </div>

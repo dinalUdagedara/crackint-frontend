@@ -101,6 +101,21 @@ export async function updateResumeEntities(
   }
 }
 
+/** Get a single resume by ID (scoped to authenticated user). */
+export async function getResume(
+  axiosAuth: AxiosInstance,
+  resumeId: string
+): Promise<ApiResponse<Resume>> {
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<Resume>>(
+      `/resumes/${resumeId}`
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
 /** List all resumes with pagination (scoped to authenticated user). */
 export async function listResumes(
   axiosAuth: AxiosInstance,

@@ -4,6 +4,7 @@ import type {
   JobPosting,
   JobPostingCreate,
   JobPostingListPayload,
+  JobPostingUpdate,
 } from "@/types/api.types"
 
 export class JobPostingsError extends Error {
@@ -67,6 +68,22 @@ export async function createJobPosting(
   try {
     const { data } = await axiosAuth.post<ApiResponse<JobPosting>>(
       "/job-postings",
+      body
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
+export async function updateJobPosting(
+  axiosAuth: AxiosInstance,
+  id: string,
+  body: JobPostingUpdate
+): Promise<ApiResponse<JobPosting>> {
+  try {
+    const { data } = await axiosAuth.patch<ApiResponse<JobPosting>>(
+      `/job-postings/${id}`,
       body
     )
     return data

@@ -23,7 +23,13 @@ export default function Page() {
                 <Link href="/cv-upload">CV upload</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
+                <Link href="/resumes">My CVs</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
                 <Link href="/job-upload">Job upload</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/job-postings">Job postings</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
                 <Link href="/sessions">Prep sessions</Link>

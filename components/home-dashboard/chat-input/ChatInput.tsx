@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Send } from "lucide-react"
+import { ImageIcon, Plus, Send } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { ClientOnly } from "@/components/common/ClientOnly"
 import { cn } from "@/lib/utils"
 import FileUploader from "./FileUploader"
 import ImageUploader from "./ImageUploader"
@@ -40,8 +41,33 @@ export default function ChatInput({
         className
       )}
     >
-      <FileUploader />
-      <ImageUploader />
+      <ClientOnly
+        fallback={
+          <>
+            <span
+              className={cn(
+                "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              )}
+              aria-hidden
+            >
+              <Plus className="size-4" />
+            </span>
+            <span
+              className={cn(
+                "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              )}
+              aria-hidden
+            >
+              <ImageIcon className="size-4" />
+            </span>
+          </>
+        }
+      >
+        <FileUploader />
+        <ImageUploader />
+      </ClientOnly>
       <Input
         type="text"
         value={value}

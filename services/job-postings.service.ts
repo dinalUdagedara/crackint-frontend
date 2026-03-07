@@ -1,12 +1,10 @@
+import axios, { type AxiosInstance } from "axios"
 import type {
   ApiResponse,
   JobPosting,
   JobPostingCreate,
   JobPostingListPayload,
 } from "@/types/api.types"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
-const JOB_POSTINGS_BASE = `${API_BASE}/api/v1/job-postings`
 
 export class JobPostingsError extends Error {
   constructor(
@@ -19,47 +17,60 @@ export class JobPostingsError extends Error {
   }
 }
 
-async function parseResponse<T>(res: Response): Promise<ApiResponse<T>> {
-  const data = (await res.json()) as ApiResponse<T>
-  if (!res.ok) {
+function throwOnAxiosError(e: unknown): never {
+  if (axios.isAxiosError(e) && e.response) {
+    const d = (e.response.data ?? {}) as ApiResponse<unknown>
     throw new JobPostingsError(
-      data.message ?? `Request failed with status ${res.status}`,
-      res.status,
-      data.payload
+      d.message ?? `Request failed with status ${e.response.status}`,
+      e.response.status,
+      d.payload
     )
   }
-  return data
+  throw e
 }
 
 export async function listJobPostings(
+  axiosAuth: AxiosInstance,
   page = 1,
-  pageSize = 20,
-  userId?: string
+  pageSize = 20
 ): Promise<ApiResponse<JobPostingListPayload>> {
-  const params = new URLSearchParams()
-  params.set("page", String(page))
-  params.set("page_size", String(pageSize))
-  if (userId) params.set("user_id", userId)
-
-  const res = await fetch(`${JOB_POSTINGS_BASE}?${params.toString()}`)
-  return parseResponse<JobPostingListPayload>(res)
+  try {
+    const { data } =
+      await axiosAuth.get<ApiResponse<JobPostingListPayload>>(
+        "/job-postings",
+        { params: { page, page_size: pageSize } }
+      )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
 
 export async function getJobPosting(
+  axiosAuth: AxiosInstance,
   id: string
 ): Promise<ApiResponse<JobPosting>> {
-  const res = await fetch(`${JOB_POSTINGS_BASE}/${id}`)
-  return parseResponse<JobPosting>(res)
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<JobPosting>>(
+      `/job-postings/${id}`
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
 
 export async function createJobPosting(
+  axiosAuth: AxiosInstance,
   body: JobPostingCreate
 ): Promise<ApiResponse<JobPosting>> {
-  const res = await fetch(JOB_POSTINGS_BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
-  return parseResponse<JobPosting>(res)
+  try {
+    const { data } = await axiosAuth.post<ApiResponse<JobPosting>>(
+      "/job-postings",
+      body
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
-

@@ -4,6 +4,8 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useSession } from "next-auth/react"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { Loader2, MessageCircle, Plus, Trash2 } from "lucide-react"
 import { SidebarFooter } from "@/components/sidebar/SidebarFooter"
 import {
@@ -48,6 +50,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
 
   const [deleteTarget, setDeleteTarget] = React.useState<PrepSession | null>(
     null
@@ -56,14 +60,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const recentSessionsQuery = useQuery({
     queryKey: ["sessions", "recent"],
     queryFn: async (): Promise<PrepSession[]> => {
-      const res = await listSessions(1, 10)
+      const res = await listSessions(axiosAuth, 1, 10)
       return res.payload ?? []
     },
+    enabled: sessionStatus === "authenticated",
   })
 
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await deleteSession(id)
+      const res = await deleteSession(axiosAuth, id)
       if (!res.success) {
         throw new Error(res.message ?? "Failed to delete session.")
       }
@@ -133,6 +138,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <span className="px-2 text-xs text-muted-foreground">
                   Couldn&apos;t load sessions
                 </span>
+              </SidebarMenuItem>
+            ) : !recentSessionsQuery.data?.length ? (
+              <SidebarMenuItem>
+                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-muted-foreground/25 bg-muted/30 px-4 py-6 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-[#ADADFB]/20 text-[#ADADFB]">
+                    <MessageCircle className="size-6" strokeWidth={1.5} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      No sessions yet
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Start your first practice above to begin
+                    </p>
+                  </div>
+                </div>
               </SidebarMenuItem>
             ) : (
               (recentSessionsQuery.data ?? []).map((session) => {

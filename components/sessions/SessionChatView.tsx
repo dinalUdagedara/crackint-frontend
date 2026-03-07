@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { Loader2 } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -47,6 +49,8 @@ function MessageBubble({ message }: { message: Message }) {
 export function SessionChatView() {
   const params = useParams<{ id: string }>()
   const sessionId = params?.id
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
 
   const [session, setSession] = useState<PrepSessionWithMessages | null>(
     null
@@ -58,14 +62,17 @@ export function SessionChatView() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (!sessionId) return
+    if (!sessionId || sessionStatus !== "authenticated") {
+      if (sessionStatus === "unauthenticated") setIsLoading(false)
+      return
+    }
     let isMounted = true
 
     async function fetchSession() {
       setIsLoading(true)
       setError(null)
       try {
-        const res = await getSessionWithMessages(sessionId)
+        const res = await getSessionWithMessages(axiosAuth, sessionId)
         if (!isMounted) return
         if (res.success && res.payload) {
           setSession(res.payload)
@@ -90,7 +97,7 @@ export function SessionChatView() {
     return () => {
       isMounted = false
     }
-  }, [sessionId])
+  }, [sessionId, sessionStatus, axiosAuth])
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -103,7 +110,7 @@ export function SessionChatView() {
   async function refreshSession() {
     if (!sessionId) return
     try {
-      const res = await getSessionWithMessages(sessionId)
+      const res = await getSessionWithMessages(axiosAuth, sessionId)
       if (res.success && res.payload) {
         setSession(res.payload)
       }
@@ -124,7 +131,7 @@ export function SessionChatView() {
         throw new Error("Please enter a message to send.")
       }
 
-      const res = await postChatTurn(sessionId, trimmed)
+      const res = await postChatTurn(axiosAuth, sessionId, trimmed)
       if (!res.success || !res.payload) {
         throw new Error(res.message || "Failed to send message.")
       }

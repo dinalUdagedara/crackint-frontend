@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { usePathname } from "next/navigation"
+import { useSession, signOut, signIn } from "next-auth/react"
+import { User } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,7 +14,17 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { ClientOnly } from "@/components/common/ClientOnly"
 import { ModeToggle } from "@/components/common/ModeToggler"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
 
 type BreadcrumbSegment = { label: string; href: string | null }
 
@@ -70,6 +82,9 @@ function getBreadcrumbs(pathname: string): BreadcrumbSegment[] {
 export function DashboardHeader() {
   const pathname = usePathname()
   const segments = getBreadcrumbs(pathname)
+  const { data: session, status } = useSession()
+
+  const isAuthenticated = !!session
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -100,8 +115,66 @@ export function DashboardHeader() {
           ))}
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="ml-auto">
-        <ModeToggle />
+      <div className="ml-auto flex items-center gap-2">
+        <ClientOnly>
+          <ModeToggle />
+        </ClientOnly>
+        <ClientOnly>
+          {status !== "loading" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full"
+                  aria-label={isAuthenticated ? "Account menu" : "Sign in"}
+                >
+                  <User className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  {isAuthenticated
+                    ? session.user?.name || session.user?.email || "Account"
+                    : "Not signed in"}
+                </DropdownMenuLabel>
+                {isAuthenticated && session.user?.email && (
+                  <p className="px-2 pb-1 text-xs text-muted-foreground">
+                    {session.user.email}
+                  </p>
+                )}
+                <DropdownMenuSeparator />
+                {isAuthenticated ? (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => {
+                      void signOut({ callbackUrl: "/", redirect: true })
+                    }}
+                  >
+                    Sign out
+                  </DropdownMenuItem>
+                ) : (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        void signIn("credentials", { callbackUrl: "/" })
+                      }}
+                    >
+                      Sign in with email
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        void signIn("google", { callbackUrl: "/" })
+                      }}
+                    >
+                      Sign in with Google
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </ClientOnly>
       </div>
     </header>
   )

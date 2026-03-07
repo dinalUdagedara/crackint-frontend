@@ -3,15 +3,14 @@
 import { useRouter } from "next/navigation"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import {
-  createSession,
-  appendMessage,
-} from "@/services/sessions.service"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
+import { createSession, postChatTurn } from "@/services/sessions.service"
 import ChatInputView from "./chat-input/ChatInputView"
 
 export function HomeChatInput() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const axiosAuth = useAxiosAuth()
 
   const startQuickPracticeMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -20,7 +19,7 @@ export function HomeChatInput() {
         throw new Error("Please enter a message.")
       }
 
-      const createRes = await createSession({
+      const createRes = await createSession(axiosAuth, {
         user_id: null,
         resume_id: null,
         job_posting_id: null,
@@ -33,12 +32,7 @@ export function HomeChatInput() {
 
       const sessionId = createRes.payload.id
 
-      await appendMessage(sessionId, {
-        sender: "USER",
-        type: "QUESTION",
-        content: trimmed,
-        metadata: {},
-      })
+      await postChatTurn(axiosAuth, sessionId, trimmed)
 
       return { sessionId }
     },

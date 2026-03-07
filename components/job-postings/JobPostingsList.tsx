@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { listJobPostings } from "@/services/job-postings.service"
 import type { JobPosting } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
@@ -36,6 +38,8 @@ function getLocation(job: JobPosting): string {
 }
 
 export function JobPostingsList() {
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
   const [items, setItems] = useState<JobPosting[]>([])
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState<{
@@ -51,7 +55,7 @@ export function JobPostingsList() {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await listJobPostings(page, 20)
+      const res = await listJobPostings(axiosAuth, page, 20)
       if (res.success && res.payload) {
         setItems(res.payload)
         if (res.meta) {
@@ -68,11 +72,15 @@ export function JobPostingsList() {
     } finally {
       setIsLoading(false)
     }
-  }, [page])
+  }, [page, axiosAuth])
 
   useEffect(() => {
-    fetchPostings()
-  }, [fetchPostings])
+    if (sessionStatus === "authenticated") {
+      fetchPostings()
+    } else if (sessionStatus === "unauthenticated") {
+      setIsLoading(false)
+    }
+  }, [sessionStatus, fetchPostings])
 
   if (isLoading && items.length === 0) {
     return (

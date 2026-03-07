@@ -139,6 +139,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   Couldn&apos;t load sessions
                 </span>
               </SidebarMenuItem>
+            ) : !recentSessionsQuery.data?.length ? (
+              <SidebarMenuItem>
+                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-muted-foreground/25 bg-muted/30 px-4 py-6 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-[#ADADFB]/20 text-[#ADADFB]">
+                    <MessageCircle className="size-6" strokeWidth={1.5} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      No sessions yet
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Start your first practice above to begin
+                    </p>
+                  </div>
+                </div>
+              </SidebarMenuItem>
             ) : (
               (recentSessionsQuery.data ?? []).map((session) => {
                 const href = `/sessions/${session.id}`

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft, AlertTriangle } from "lucide-react"
+import { Loader2, ArrowLeft, AlertTriangle, Pencil } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getJobPosting } from "@/services/job-postings.service"
+import { EditJobPostingDialog } from "./EditJobPostingDialog"
 import { listResumes } from "@/services/resume-uploader.service"
 import { getSkillGap, MatchError } from "@/services/match.service"
 import type { JobPosting, Resume, SkillGapPayload } from "@/types/api.types"
@@ -43,6 +44,7 @@ export function JobPostingDetail() {
   const [skillGapResult, setSkillGapResult] = useState<SkillGapPayload | null>(null)
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   const resumesQuery = useQuery({
     queryKey: ["resumes", "list", 1, 100],
@@ -139,14 +141,24 @@ export function JobPostingDetail() {
 
       {!isLoading && !error && job && (
         <div className="space-y-6">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">
-              {job.entities?.JOB_TITLE?.[0] ?? "Job posting"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {job.entities?.COMPANY?.[0] ?? "Unknown company"} •{" "}
-              {job.location ?? job.entities?.LOCATION?.[0] ?? "Location unknown"}
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold tracking-tight">
+                {job.entities?.JOB_TITLE?.[0] ?? "Job posting"}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {job.entities?.COMPANY?.[0] ?? "Unknown company"} •{" "}
+                {job.location ?? job.entities?.LOCATION?.[0] ?? "Location unknown"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEditDialog(true)}
+            >
+              <Pencil className="mr-2 size-4" />
+              Edit
+            </Button>
           </div>
 
           <div className="grid gap-4 text-sm md:grid-cols-2">
@@ -346,6 +358,18 @@ export function JobPostingDetail() {
               )}
             </div>
           </div>
+
+          <EditJobPostingDialog
+            key={job.updated_at ?? job.id}
+            axiosAuth={axiosAuth}
+            job={job}
+            open={showEditDialog}
+            onOpenChange={setShowEditDialog}
+            onSave={(updated) => {
+              setJob(updated)
+              setShowEditDialog(false)
+            }}
+          />
         </div>
       )}
     </div>

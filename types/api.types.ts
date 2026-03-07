@@ -71,6 +71,14 @@ export interface JobPostingCreate {
   deadline: string | null;
 }
 
+/** Body for PATCH job posting: only provided fields are updated. */
+export interface JobPostingUpdate {
+  entities?: Record<string, string[]>;
+  raw_text?: string | null;
+  location?: string | null;
+  deadline?: string | null;
+}
+
 // ---- Prep sessions & messages ----
 
 export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE";

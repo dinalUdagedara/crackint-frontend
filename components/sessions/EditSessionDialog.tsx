@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { updateSession } from "@/services/sessions.service"
-import type { PrepSession } from "@/types/api.types"
+import type { PrepSession, PrepSessionMode } from "@/types/api.types"
 
 interface EditSessionDialogProps {
   session: PrepSession
@@ -47,7 +47,7 @@ export function EditSessionDialog({
   const [error, setError] = useState<string | null>(null)
 
   const updateMutation = useMutation({
-    mutationFn: async (payload: { title?: string; mode?: string }) => {
+    mutationFn: async (payload: { title?: string; mode?: PrepSessionMode }) => {
       const res = await updateSession(axiosAuth, session.id, payload)
       if (!res.success || !res.payload) {
         throw new Error(res.message || "Failed to update session.")

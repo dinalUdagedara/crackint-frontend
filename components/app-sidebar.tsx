@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { Loader2, MessageCircle, Plus, Trash2 } from "lucide-react"
+import { Loader2, MessageCircle, Plus, Trash2, MoreHorizontal, Pencil } from "lucide-react"
 import { SidebarFooter } from "@/components/sidebar/SidebarFooter"
 import {
   Sidebar,
@@ -18,6 +18,12 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TruncatedText } from "@/components/ui/truncated-text"
@@ -36,13 +42,15 @@ import { toast } from "sonner"
 import { deleteSession, listSessions } from "@/services/sessions.service"
 import type { PrepSession } from "@/types/api.types"
 
+import { EditSessionDialog } from "@/components/sessions/EditSessionDialog"
+
 function formatSessionLabel(session: PrepSession): string {
   const summary = session.summary as { [key: string]: unknown } | null
   const title =
     (summary && typeof summary.title === "string" && summary.title.trim()) || null
   if (title) return title
   const modeLabel =
-    session.mode === "QUICK_PRACTICE" ? "Quick practice" : "Targeted"
+    session.mode === "QUICK_PRACTICE" ? "Quick practice" : session.mode === "TUTOR_CHAT" ? "Tutor chat" : "Targeted"
   return `${modeLabel} • ${session.status}`
 }
 
@@ -54,6 +62,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const axiosAuth = useAxiosAuth()
 
   const [deleteTarget, setDeleteTarget] = React.useState<PrepSession | null>(
+    null
+  )
+  const [editTarget, setEditTarget] = React.useState<PrepSession | null>(
     null
   )
 
@@ -92,6 +103,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     e.preventDefault()
     e.stopPropagation()
     setDeleteTarget(session)
+  }
+
+  function openEditDialog(session: PrepSession, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditTarget(session)
   }
 
   async function handleConfirmDelete() {
@@ -176,20 +193,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         />
                       </Link>
                     </SidebarMenuButton>
-                    <SidebarMenuAction
-                      showOnHover
-                      onClick={(e) => openDeleteDialog(session, e)}
-                      disabled={deleteSessionMutation.isPending}
-                      className="text-muted-foreground hover:text-destructive"
-                      aria-label="Delete session"
-                    >
-                      {deleteSessionMutation.isPending &&
-                      deleteTarget?.id === session.id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-4" />
-                      )}
-                    </SidebarMenuAction>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuAction showOnHover>
+                          {deleteSessionMutation.isPending && deleteTarget?.id === session.id ? (
+                            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                          ) : (
+                            <MoreHorizontal className="size-4" />
+                          )}
+                          <span className="sr-only">More</span>
+                        </SidebarMenuAction>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-48 rounded-lg"
+                        side="bottom"
+                        align="end"
+                      >
+                        <DropdownMenuItem
+                          onClick={(e) => openEditDialog(session, e as unknown as React.MouseEvent)}
+                        >
+                          <Pencil className="mr-2 size-4 text-muted-foreground" />
+                          <span>Rename</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => openDeleteDialog(session, e as unknown as React.MouseEvent)}
+                          className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 size-4" />
+                          <span>Delete</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </SidebarMenuItem>
                 )
               })
@@ -232,6 +266,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {editTarget && (
+        <EditSessionDialog
+          session={editTarget}
+          open={!!editTarget}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTimeout(() => setEditTarget(null), 150)
+            }
+          }}
+        />
+      )}
     </Sidebar>
   )
 }

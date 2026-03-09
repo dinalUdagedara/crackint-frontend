@@ -81,7 +81,7 @@ export interface JobPostingUpdate {
 
 // ---- Prep sessions & messages ----
 
-export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE";
+export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT";
 
 export type PrepSessionStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
 
@@ -110,6 +110,11 @@ export interface PrepSessionCreate {
   resume_id: string | null;
   job_posting_id: string | null;
   mode: PrepSessionMode;
+}
+
+export interface PrepSessionUpdate {
+  title?: string;
+  mode?: PrepSessionMode;
 }
 
 export type MessageSender = "USER" | "ASSISTANT";

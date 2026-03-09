@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   PrepSession,
   PrepSessionCreate,
+  PrepSessionUpdate,
   PrepSessionListPayload,
   PrepSessionWithMessages,
   Message,
@@ -67,6 +68,22 @@ export async function listSessions(
     return data
   } catch (e) {
     return throwOnAxiosError(e)
+  }
+}
+
+export async function updateSession(
+  axiosAuth: AxiosInstance,
+  id: string,
+  body: PrepSessionUpdate
+): Promise<ApiResponse<PrepSession>> {
+  try {
+    const { data } = await axiosAuth.patch<ApiResponse<PrepSession>>(
+      `/sessions/${id}`,
+      body
+    );
+    return data;
+  } catch (e) {
+    return throwOnAxiosError(e);
   }
 }
 

@@ -21,11 +21,11 @@ export default function ChatInputView({
         className
       )}
     >
-      <ChatInput
+      <div className="max-w-5xl mx-auto"> <ChatInput
         placeholder="Type message"
         onSend={onSend}
         disabled={disabled}
-      />
+      /></div>
     </footer>
   )
 }

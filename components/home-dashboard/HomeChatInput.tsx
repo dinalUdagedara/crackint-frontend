@@ -12,7 +12,7 @@ export function HomeChatInput() {
   const queryClient = useQueryClient()
   const axiosAuth = useAxiosAuth()
 
-  const startQuickPracticeMutation = useMutation({
+  const startTutorChatMutation = useMutation({
     mutationFn: async (message: string) => {
       const trimmed = message.trim()
       if (!trimmed) {
@@ -23,7 +23,7 @@ export function HomeChatInput() {
         user_id: null,
         resume_id: null,
         job_posting_id: null,
-        mode: "QUICK_PRACTICE",
+        mode: "TUTOR_CHAT",
       })
 
       if (!createRes.success || !createRes.payload?.id) {
@@ -48,16 +48,18 @@ export function HomeChatInput() {
   })
 
   async function handleSend(message: string) {
-    if (startQuickPracticeMutation.isPending) return
-    startQuickPracticeMutation.mutate(message)
+    if (startTutorChatMutation.isPending) return
+    startTutorChatMutation.mutate(message)
   }
 
   return (
     <div className="w-full">
+
       <ChatInputView
         onSend={handleSend}
-        disabled={startQuickPracticeMutation.isPending}
+        disabled={startTutorChatMutation.isPending}
       />
+
     </div>
   )
 }

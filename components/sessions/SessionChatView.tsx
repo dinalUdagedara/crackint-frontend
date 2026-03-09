@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { Loader2 } from "lucide-react"
+import { Loader2, Pencil } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
@@ -14,6 +14,14 @@ import type {
 } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { EditSessionDialog } from "./EditSessionDialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ChevronDown, MessageSquare, Target } from "lucide-react"
 
 function formatDate(iso: string): string {
   try {
@@ -60,6 +68,28 @@ export function SessionChatView() {
 
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
+  const updateModeMutation = useMutation({
+    mutationFn: async (newMode: "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT") => {
+      const { updateSession } = await import("@/services/sessions.service")
+      const res = await updateSession(axiosAuth, sessionId as string, {
+        mode: newMode,
+      })
+      if (!res.success || !res.payload) {
+        throw new Error(res.message || "Failed to update session mode.")
+      }
+      return res.payload
+    },
+    onSuccess: (updatedSession) => {
+      setSession((prev) => (prev ? { ...prev, mode: updatedSession.mode } : null))
+      toast.success("Session mode updated")
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to update session mode.")
+    },
+  })
 
   useEffect(() => {
     if (!sessionId || sessionStatus !== "authenticated") {
@@ -192,13 +222,58 @@ export function SessionChatView() {
     <div className="flex h-full flex-col gap-4">
       <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="space-y-0.5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Prep session
-            </p>
-            <p className="text-sm font-semibold">
-              {sessionTitle}
-            </p>
+          <div className="space-y-0.5 flex-1">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <span>Prep session</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
+                    disabled={updateModeMutation.isPending}
+                  >
+                    {session.mode === "TUTOR_CHAT" ? (
+                      <MessageSquare className="mr-1 h-3 w-3" />
+                    ) : (
+                      <Target className="mr-1 h-3 w-3" />
+                    )}
+                    {session.mode === "TUTOR_CHAT" ? "Tutor Chat" : session.mode === "QUICK_PRACTICE" ? "Quick Practice" : "Targeted"}
+                    <ChevronDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onClick={() => updateModeMutation.mutate("TUTOR_CHAT")}
+                    className={session.mode === "TUTOR_CHAT" ? "bg-muted" : ""}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Tutor Chat
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => updateModeMutation.mutate(session.job_posting_id && session.resume_id ? "TARGETED" : "QUICK_PRACTICE")}
+                    className={session.mode !== "TUTOR_CHAT" ? "bg-muted" : ""}
+                  >
+                    <Target className="mr-2 h-4 w-4" />
+                    Interview Mode
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold">
+                {sessionTitle}
+              </p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-primary"
+                onClick={() => setIsEditDialogOpen(true)}
+                aria-label="Edit session name"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
           <div className="text-right text-xs text-muted-foreground">
             <div>Created {formatDate(session.created_at)}</div>
@@ -265,9 +340,9 @@ export function SessionChatView() {
                   Start your practice
                 </p>
                 <p className="max-w-sm text-sm text-muted-foreground">
-                  Type a message below to get your first interview question, or
-                  say something like &quot;Hi&quot; to begin. Then answer each
-                  question to receive feedback and improve.
+                  {session.mode === "TUTOR_CHAT"
+                    ? "Ask the coach anything about your career, resume, or interview prep."
+                    : "Type a message below to get your first interview question, or say something like \"Hi\" to begin. Then answer each question to receive feedback and improve."}
                 </p>
               </div>
             )}
@@ -310,6 +385,17 @@ export function SessionChatView() {
           </div>
         </div>
       </div>
+
+      {session && (
+        <EditSessionDialog
+          session={session}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSave={(updatedSession) => {
+            setSession((prev) => prev ? { ...prev, ...updatedSession } : null)
+          }}
+        />
+      )}
     </div>
   )
 }

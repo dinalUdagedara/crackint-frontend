@@ -13,7 +13,7 @@ import type {
   PrepSessionWithMessages,
 } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import ChatInputView from "@/components/home-dashboard/chat-input/ChatInputView"
 import { EditSessionDialog } from "./EditSessionDialog"
 import {
   DropdownMenu,
@@ -66,7 +66,6 @@ export function SessionChatView() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -135,8 +134,6 @@ export function SessionChatView() {
     }
   }, [session?.messages?.length])
 
-  const canSend = input.trim().length > 0
-
   async function refreshSession() {
     if (!sessionId) return
     try {
@@ -168,8 +165,6 @@ export function SessionChatView() {
       return res.payload
     },
     onSuccess: async (payload) => {
-      toast.success("Message sent")
-      setInput("")
       // Optimistically append new messages if we already have a session in memory,
       // otherwise fall back to full refresh.
       if (session && payload?.new_messages?.length) {
@@ -186,10 +181,9 @@ export function SessionChatView() {
     },
   })
 
-  async function handleSendMessage() {
-    if (!sessionId || !canSend || chatMutation.isPending) return
-
-    chatMutation.mutate(input)
+  async function handleSendMessage(message: string) {
+    if (!sessionId || chatMutation.isPending) return
+    chatMutation.mutate(message)
   }
 
   if (isLoading && !session) {
@@ -204,7 +198,7 @@ export function SessionChatView() {
     return (
       <div
         role="alert"
-        className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        className="mx-auto mt-4 max-w-5xl rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
       >
         {error}
       </div>
@@ -219,117 +213,117 @@ export function SessionChatView() {
     `${session.mode} • ${session.status}`
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="space-y-0.5 flex-1">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <span>Prep session</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+    <div className="flex h-full flex-col relative overflow-hidden bg-background">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6 pb-6">
+          <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="space-y-0.5 flex-1">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <span>Prep session</span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
+                        disabled={updateModeMutation.isPending}
+                      >
+                        {session.mode === "TUTOR_CHAT" ? (
+                          <MessageSquare className="mr-1 h-3 w-3" />
+                        ) : (
+                          <Target className="mr-1 h-3 w-3" />
+                        )}
+                        {session.mode === "TUTOR_CHAT" ? "Tutor Chat" : session.mode === "QUICK_PRACTICE" ? "Quick Practice" : "Targeted"}
+                        <ChevronDown className="ml-1 h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem
+                        onClick={() => updateModeMutation.mutate("TUTOR_CHAT")}
+                        className={session.mode === "TUTOR_CHAT" ? "bg-muted" : ""}
+                      >
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Tutor Chat
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => updateModeMutation.mutate(session.job_posting_id && session.resume_id ? "TARGETED" : "QUICK_PRACTICE")}
+                        className={session.mode !== "TUTOR_CHAT" ? "bg-muted" : ""}
+                      >
+                        <Target className="mr-2 h-4 w-4" />
+                        Interview Mode
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold">
+                    {sessionTitle}
+                  </p>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
-                    disabled={updateModeMutation.isPending}
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-primary"
+                    onClick={() => setIsEditDialogOpen(true)}
+                    aria-label="Edit session name"
                   >
-                    {session.mode === "TUTOR_CHAT" ? (
-                      <MessageSquare className="mr-1 h-3 w-3" />
-                    ) : (
-                      <Target className="mr-1 h-3 w-3" />
-                    )}
-                    {session.mode === "TUTOR_CHAT" ? "Tutor Chat" : session.mode === "QUICK_PRACTICE" ? "Quick Practice" : "Targeted"}
-                    <ChevronDown className="ml-1 h-3 w-3" />
+                    <Pencil className="h-3 w-3" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem
-                    onClick={() => updateModeMutation.mutate("TUTOR_CHAT")}
-                    className={session.mode === "TUTOR_CHAT" ? "bg-muted" : ""}
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Tutor Chat
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => updateModeMutation.mutate(session.job_posting_id && session.resume_id ? "TARGETED" : "QUICK_PRACTICE")}
-                    className={session.mode !== "TUTOR_CHAT" ? "bg-muted" : ""}
-                  >
-                    <Target className="mr-2 h-4 w-4" />
-                    Interview Mode
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </div>
+              </div>
+              <div className="text-right text-xs text-muted-foreground">
+                <div>Created {formatDate(session.created_at)}</div>
+                <div>Updated {formatDate(session.updated_at)}</div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold">
-                {sessionTitle}
-              </p>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:text-primary"
-                onClick={() => setIsEditDialogOpen(true)}
-                aria-label="Edit session name"
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span>
+                Resume:{" "}
+                {session.resume_id ? session.resume_id.slice(0, 8) + "..." : "None"}
+              </span>
+              <span>•</span>
+              <span>
+                Job:{" "}
+                {session.job_posting_id
+                  ? session.job_posting_id.slice(0, 8) + "..."
+                  : "None"}
+              </span>
+              <span>•</span>
+              <span>
+                Readiness score:{" "}
+                {session.readiness_score != null
+                  ? Math.round(session.readiness_score)
+                  : "Not computed yet"}
+              </span>
             </div>
-          </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <div>Created {formatDate(session.created_at)}</div>
-            <div>Updated {formatDate(session.updated_at)}</div>
-          </div>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span>
-            Resume:{" "}
-            {session.resume_id ? session.resume_id.slice(0, 8) + "..." : "None"}
-          </span>
-          <span>•</span>
-          <span>
-            Job:{" "}
-            {session.job_posting_id
-              ? session.job_posting_id.slice(0, 8) + "..."
-              : "None"}
-          </span>
-          <span>•</span>
-          <span>
-            Readiness score:{" "}
-            {session.readiness_score != null
-              ? Math.round(session.readiness_score)
-              : "Not computed yet"}
-          </span>
-        </div>
-        {session.summary && (
-          <div className="mt-3 grid gap-3 text-xs text-muted-foreground md:grid-cols-2">
-            {typeof (session.summary as any).strengths === "string" && (
-              <div>
-                <p className="font-medium text-foreground text-xs">
-                  Strengths
-                </p>
-                <p className="mt-1">
-                  {(session.summary as any).strengths as string}
-                </p>
+            {session.summary && (
+              <div className="mt-3 grid gap-3 text-xs text-muted-foreground md:grid-cols-2">
+                {typeof (session.summary as any).strengths === "string" && (
+                  <div>
+                    <p className="font-medium text-foreground text-xs">
+                      Strengths
+                    </p>
+                    <p className="mt-1">
+                      {(session.summary as any).strengths as string}
+                    </p>
+                  </div>
+                )}
+                {typeof (session.summary as any).areas_for_improvement ===
+                  "string" && (
+                    <div>
+                      <p className="font-medium text-foreground text-xs">
+                        Areas for improvement
+                      </p>
+                      <p className="mt-1">
+                        {(session.summary as any).areas_for_improvement as string}
+                      </p>
+                    </div>
+                  )}
               </div>
             )}
-            {typeof (session.summary as any).areas_for_improvement ===
-              "string" && (
-                <div>
-                  <p className="font-medium text-foreground text-xs">
-                    Areas for improvement
-                  </p>
-                  <p className="mt-1">
-                    {(session.summary as any).areas_for_improvement as string}
-                  </p>
-                </div>
-              )}
           </div>
-        )}
-      </div>
 
-      <div className="flex-1 overflow-hidden rounded-lg border bg-background">
-        <div className="flex h-full flex-col">
-          <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          <div className="flex flex-col space-y-4">
             {session.messages && session.messages.length > 0 ? (
               session.messages.map((msg) => (
                 <MessageBubble key={msg.id} message={msg} />
@@ -351,40 +345,10 @@ export function SessionChatView() {
         </div>
       </div>
 
-      <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your question or answer here..."
-          rows={3}
-          className="text-sm"
-          disabled={chatMutation.isPending}
-        />
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <p className="text-[11px] text-muted-foreground">
-            Messages are stored as part of this session so you can review your
-            practice later.
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handleSendMessage}
-              disabled={
-                !canSend || chatMutation.isPending
-              }
-            >
-              {chatMutation.isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send"
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <ChatInputView 
+        onSend={handleSendMessage}
+        disabled={chatMutation.isPending}
+      />
 
       {session && (
         <EditSessionDialog
@@ -399,4 +363,3 @@ export function SessionChatView() {
     </div>
   )
 }
-

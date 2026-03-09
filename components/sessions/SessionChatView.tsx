@@ -5,9 +5,11 @@ import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { Loader2, Pencil } from "lucide-react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
+import { getResume } from "@/services/resume-uploader.service"
+import { getJobPosting } from "@/services/job-postings.service"
 import type {
   Message,
   PrepSessionWithMessages,
@@ -42,8 +44,8 @@ function MessageBubble({ message }: { message: Message }) {
       {!isUser && (
         <div className="mr-4 shrink-0 mt-1">
           <div className={`flex size-8 items-center justify-center rounded-full border shadow-sm ${isFeedback
-              ? "bg-amber-100/50 border-amber-200/50 dark:bg-amber-500/10 dark:border-amber-500/20 text-amber-600 dark:text-amber-500"
-              : "bg-background border-border text-foreground"
+            ? "bg-amber-100/50 border-amber-200/50 dark:bg-amber-500/10 dark:border-amber-500/20 text-amber-600 dark:text-amber-500"
+            : "bg-background border-border text-foreground"
             }`}>
             {isFeedback ? <Sparkles className="size-4" /> : <Bot className="size-4" />}
           </div>
@@ -51,10 +53,10 @@ function MessageBubble({ message }: { message: Message }) {
       )}
       <div
         className={`max-w-[85%] text-[15px] ${isUser
-            ? "bg-[#f4f4f4] dark:bg-[#2f2f2f] text-foreground rounded-[20px] px-5 py-2.5"
-            : isFeedback
-              ? "bg-amber-50/50 dark:bg-amber-500/5 text-foreground rounded-2xl px-5 py-4 border border-amber-200/50 dark:border-amber-500/10 shadow-sm"
-              : "bg-transparent text-foreground py-1.5"
+          ? "bg-[#f4f4f4] dark:bg-[#2f2f2f] text-foreground rounded-[20px] px-5 py-2.5"
+          : isFeedback
+            ? "bg-amber-50/50 dark:bg-amber-500/5 text-foreground rounded-2xl px-5 py-4 border border-amber-200/50 dark:border-amber-500/10 shadow-sm"
+            : "bg-transparent text-foreground py-1.5"
           }`}
       >
         <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
@@ -78,6 +80,21 @@ export function SessionChatView() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
+  const { data: resumeData, isLoading: isResumeLoading } = useQuery({
+    queryKey: ["resume", session?.resume_id],
+    queryFn: () => getResume(axiosAuth, session!.resume_id!),
+    enabled: !!session?.resume_id && sessionStatus === "authenticated",
+  })
+
+  const { data: jobData, isLoading: isJobLoading } = useQuery({
+    queryKey: ["jobPosting", session?.job_posting_id],
+    queryFn: () => getJobPosting(axiosAuth, session!.job_posting_id!),
+    enabled: !!session?.job_posting_id && sessionStatus === "authenticated",
+  })
+
+  const resumeName = resumeData?.payload?.entities?.NAME?.[0] || (session?.resume_id ? session.resume_id.slice(0, 8) + "..." : "None")
+  const jobTitle = jobData?.payload?.entities?.JOB_TITLE?.[0] || (session?.job_posting_id ? session.job_posting_id.slice(0, 8) + "..." : "None")
 
   const updateModeMutation = useMutation({
     mutationFn: async (newMode: "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT") => {
@@ -286,16 +303,22 @@ export function SessionChatView() {
               </div>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              <span>
+              <span className="flex items-center gap-1">
                 Resume:{" "}
-                {session.resume_id ? session.resume_id.slice(0, 8) + "..." : "None"}
+                {isResumeLoading ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  resumeName
+                )}
               </span>
               <span>•</span>
-              <span>
+              <span className="flex items-center gap-1">
                 Job:{" "}
-                {session.job_posting_id
-                  ? session.job_posting_id.slice(0, 8) + "..."
-                  : "None"}
+                {isJobLoading ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  jobTitle
+                )}
               </span>
               <span>•</span>
               <span>
@@ -357,6 +380,9 @@ export function SessionChatView() {
       <ChatInputView
         onSend={handleSendMessage}
         disabled={chatMutation.isPending}
+        mode={session.mode as any}
+        onModeChange={(newMode) => updateModeMutation.mutate(newMode)}
+        disableTargeted={!(session.job_posting_id && session.resume_id)}
       />
 
       {session && (

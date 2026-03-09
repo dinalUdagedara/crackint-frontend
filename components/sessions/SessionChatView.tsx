@@ -21,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown, MessageSquare, Target } from "lucide-react"
+import { ChevronDown, MessageSquare, Target, Bot, Sparkles } from "lucide-react"
 
 function formatDate(iso: string): string {
   try {
@@ -37,18 +37,27 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <div
-      className={`flex w-full ${isUser ? "justify-end" : "justify-start"
-        }`}
+      className={`flex w-full ${isUser ? "justify-end" : "justify-start"} mb-4`}
     >
+      {!isUser && (
+        <div className="mr-4 shrink-0 mt-1">
+          <div className={`flex size-8 items-center justify-center rounded-full border shadow-sm ${isFeedback
+              ? "bg-amber-100/50 border-amber-200/50 dark:bg-amber-500/10 dark:border-amber-500/20 text-amber-600 dark:text-amber-500"
+              : "bg-background border-border text-foreground"
+            }`}>
+            {isFeedback ? <Sparkles className="size-4" /> : <Bot className="size-4" />}
+          </div>
+        </div>
+      )}
       <div
-        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm shadow-sm ${isUser
-            ? "bg-primary text-primary-foreground"
+        className={`max-w-[85%] text-[15px] ${isUser
+            ? "bg-[#f4f4f4] dark:bg-[#2f2f2f] text-foreground rounded-[20px] px-5 py-2.5"
             : isFeedback
-              ? "bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100"
-              : "bg-muted text-foreground"
+              ? "bg-amber-50/50 dark:bg-amber-500/5 text-foreground rounded-2xl px-5 py-4 border border-amber-200/50 dark:border-amber-500/10 shadow-sm"
+              : "bg-transparent text-foreground py-1.5"
           }`}
       >
-        <div className="whitespace-pre-wrap">{message.content}</div>
+        <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
       </div>
     </div>
   )
@@ -67,7 +76,7 @@ export function SessionChatView() {
   const [error, setError] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
-  
+
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const updateModeMutation = useMutation({
@@ -214,9 +223,9 @@ export function SessionChatView() {
 
   return (
     <div className="flex h-full flex-col relative overflow-hidden bg-background">
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6 pb-6">
-          <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 pb-6">
+          <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm shrink-0">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="space-y-0.5 flex-1">
                 <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -323,13 +332,13 @@ export function SessionChatView() {
             )}
           </div>
 
-          <div className="flex flex-col space-y-4">
+          <div className="flex flex-1 flex-col space-y-4">
             {session.messages && session.messages.length > 0 ? (
               session.messages.map((msg) => (
                 <MessageBubble key={msg.id} message={msg} />
               ))
             ) : (
-              <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-3 text-center">
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
                 <p className="text-base font-medium text-foreground">
                   Start your practice
                 </p>
@@ -345,7 +354,7 @@ export function SessionChatView() {
         </div>
       </div>
 
-      <ChatInputView 
+      <ChatInputView
         onSend={handleSendMessage}
         disabled={chatMutation.isPending}
       />

@@ -8,6 +8,7 @@ import { ClientOnly } from "@/components/common/ClientOnly"
 import { cn } from "@/lib/utils"
 import FileUploader from "./FileUploader"
 import ImageUploader from "./ImageUploader"
+import { RealtimeMic } from "./RealtimeMic"
 
 type ChatInputProps = {
   className?: string
@@ -73,9 +74,23 @@ export default function ChatInput({
           </>
         }
       >
-        <div className="mb-0.5 flex gap-1">
+        <div className="mb-0.5 flex gap-1 items-center">
           <FileUploader />
           <ImageUploader />
+          <RealtimeMic 
+            disabled={disabled} 
+            onUpdateText={(text) => {
+              if (text) {
+                // To support typing + speaking at same time, we could append it or just replace.
+                // For simplicity let's just set it or append it if not empty.
+                // But real-time STT usually replaces the partial text.
+                // Since this might get tricky, let's keep it simple: 
+                // We'll append the text if it's the final transcript, or replace if partial.
+                // But RealtimeMic handles partials internal and passes the complete string!
+                setValue((prev) => text)
+              }
+            }} 
+          />
         </div>
       </ClientOnly>
       <TextareaAutosize

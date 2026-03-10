@@ -4,9 +4,13 @@ import { Bot, Sparkles } from "lucide-react"
 
 type MessageBubbleProps = {
   message: Message
+  isPending?: boolean
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({
+  message,
+  isPending = false,
+}) => {
   const isUser = message.sender === "USER"
   const isFeedback = message.type === "FEEDBACK"
 
@@ -30,7 +34,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       <div
         className={`max-w-[85%] text-[15px] ${
           isUser
-            ? "bg-[#f4f4f4] dark:bg-[#2f2f2f] text-foreground rounded-[20px] px-5 py-2.5"
+            ? `bg-[#f4f4f4] dark:bg-[#2f2f2f] text-foreground rounded-[20px] px-5 py-2.5 ${
+                isPending ? "opacity-80" : ""
+              }`
             : isFeedback
               ? "bg-amber-50/50 dark:bg-amber-500/5 text-foreground rounded-2xl px-5 py-4 border border-amber-200/50 dark:border-amber-500/10 shadow-sm"
               : "bg-transparent text-foreground py-1.5"
@@ -39,6 +45,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         <div className="whitespace-pre-wrap leading-relaxed">
           {message.content}
         </div>
+        {isPending && (
+          <div className="mt-1 text-right text-[11px] text-muted-foreground">
+            Sending…
+          </div>
+        )}
       </div>
     </div>
   )

@@ -17,7 +17,7 @@ import { toast } from "sonner"
 import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
 import { getResume } from "@/services/resume-uploader.service"
 import { getJobPosting } from "@/services/job-postings.service"
-import type { PrepSessionWithMessages } from "@/types/api.types"
+import type { Message, PrepSessionWithMessages } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import ChatInputView from "@/components/home-dashboard/chat-input/ChatInputView"
 import { EditSessionDialog } from "./EditSessionDialog"
@@ -53,6 +53,7 @@ export function SessionChatView() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState<Message | null>(null)
 
   const { data: resumeData, isLoading: isResumeLoading } = useQuery({
     queryKey: ["resume", session?.resume_id],
@@ -133,6 +134,12 @@ export function SessionChatView() {
     }
   }, [session?.messages?.length])
 
+  useEffect(() => {
+    if (messagesEndRef.current && pendingMessage) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [pendingMessage])
+
   async function refreshSession() {
     if (!sessionId) return
     try {
@@ -178,11 +185,33 @@ export function SessionChatView() {
     onError: (err: any) => {
       toast.error(err?.message || "Failed to send message.")
     },
+    onSettled: () => {
+      setPendingMessage(null)
+    },
   })
 
   async function handleSendMessage(message: string) {
     if (!sessionId || chatMutation.isPending) return
-    chatMutation.mutate(message)
+
+    const trimmed = message.trim()
+    if (!trimmed) {
+      toast.error("Please enter a message to send.")
+      return
+    }
+
+    const tempMessage: Message = {
+      id: `temp-${Date.now()}`,
+      session_id: sessionId,
+      sender: "USER",
+      type: "ANSWER",
+      content: trimmed,
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    setPendingMessage(tempMessage)
+    chatMutation.mutate(trimmed)
   }
 
   if (isLoading && !session) {
@@ -390,6 +419,7 @@ export function SessionChatView() {
       <SessionMessagesArea
         session={session}
         messagesEndRef={messagesEndRef}
+        pendingMessage={pendingMessage}
       />
 
       <ChatInputView

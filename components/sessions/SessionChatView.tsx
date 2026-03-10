@@ -4,19 +4,24 @@ import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { Loader2, Pencil, ChevronDown, ChevronUp, MessageSquare, Target, Bot, Sparkles } from "lucide-react"
+import {
+  Loader2,
+  Pencil,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  Target,
+} from "lucide-react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
 import { getResume } from "@/services/resume-uploader.service"
 import { getJobPosting } from "@/services/job-postings.service"
-import type {
-  Message,
-  PrepSessionWithMessages,
-} from "@/types/api.types"
+import type { PrepSessionWithMessages } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import ChatInputView from "@/components/home-dashboard/chat-input/ChatInputView"
 import { EditSessionDialog } from "./EditSessionDialog"
+import { SessionMessagesArea } from "./SessionMessagesArea"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,38 +35,6 @@ function formatDate(iso: string): string {
   } catch {
     return iso
   }
-}
-
-function MessageBubble({ message }: { message: Message }) {
-  const isUser = message.sender === "USER"
-  const isFeedback = message.type === "FEEDBACK"
-
-  return (
-    <div
-      className={`flex w-full ${isUser ? "justify-end" : "justify-start"} mb-4`}
-    >
-      {!isUser && (
-        <div className="mr-4 shrink-0 mt-1">
-          <div className={`flex size-8 items-center justify-center rounded-full border shadow-sm ${isFeedback
-            ? "bg-amber-100/50 border-amber-200/50 dark:bg-amber-500/10 dark:border-amber-500/20 text-amber-600 dark:text-amber-500"
-            : "bg-background border-border text-foreground"
-            }`}>
-            {isFeedback ? <Sparkles className="size-4" /> : <Bot className="size-4" />}
-          </div>
-        </div>
-      )}
-      <div
-        className={`max-w-[85%] text-[15px] ${isUser
-          ? "bg-[#f4f4f4] dark:bg-[#2f2f2f] text-foreground rounded-[20px] px-5 py-2.5"
-          : isFeedback
-            ? "bg-amber-50/50 dark:bg-amber-500/5 text-foreground rounded-2xl px-5 py-4 border border-amber-200/50 dark:border-amber-500/10 shadow-sm"
-            : "bg-transparent text-foreground py-1.5"
-          }`}
-      >
-        <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
-      </div>
-    </div>
-  )
 }
 
 export function SessionChatView() {
@@ -414,28 +387,10 @@ export function SessionChatView() {
         </div>
       </div>
 
-      {/* Scrollable chat area lives under the header so bubbles never overlap it */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-20">
-        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col space-y-4">
-          {session.messages && session.messages.length > 0 ? (
-            session.messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
-            ))
-          ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-              <p className="text-base font-medium text-foreground">
-                Start your practice
-              </p>
-              <p className="max-w-sm text-sm text-muted-foreground">
-                {session.mode === "TUTOR_CHAT"
-                  ? "Ask the coach anything about your career, resume, or interview prep."
-                  : "Type a message below to get your first interview question, or say something like \"Hi\" to begin. Then answer each question to receive feedback and improve."}
-              </p>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
+      <SessionMessagesArea
+        session={session}
+        messagesEndRef={messagesEndRef}
+      />
 
       <ChatInputView
         onSend={handleSendMessage}

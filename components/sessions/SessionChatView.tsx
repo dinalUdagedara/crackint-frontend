@@ -11,10 +11,12 @@ import {
   ChevronUp,
   MessageSquare,
   Target,
+  FileText,
 } from "lucide-react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
+import { generateCoverLetter } from "@/services/cover-letter.service"
 import { getResume } from "@/services/resume-uploader.service"
 import { getJobPosting } from "@/services/job-postings.service"
 import type { Message, PrepSessionWithMessages } from "@/types/api.types"
@@ -54,6 +56,7 @@ export function SessionChatView() {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<Message | null>(null)
+  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false)
 
   const { data: resumeData, isLoading: isResumeLoading } = useQuery({
     queryKey: ["resume", session?.resume_id],
@@ -151,6 +154,31 @@ export function SessionChatView() {
       toast.error(
         err instanceof Error ? err.message : "Failed to refresh session"
       )
+    }
+  }
+
+  async function handleGenerateCoverLetter() {
+    if (!sessionId || isGeneratingCoverLetter) return
+    setIsGeneratingCoverLetter(true)
+    try {
+      const res = await generateCoverLetter(axiosAuth, {
+        session_id: sessionId,
+        tone: "formal",
+        length: "medium",
+      })
+      if (!res.success) {
+        throw new Error(res.message || "Failed to generate cover letter.")
+      }
+      await refreshSession()
+      toast.success("Cover letter generated from this session.")
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Cover letter generation failed, please try again later."
+      )
+    } finally {
+      setIsGeneratingCoverLetter(false)
     }
   }
 
@@ -384,6 +412,56 @@ export function SessionChatView() {
                         : "Not computed yet"}
                     </span>
                   </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Resume</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    {isResumeLoading ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <span>{resumeName}</span>
+                    )}
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Job</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    {isJobLoading ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <span>{jobTitle}</span>
+                    )}
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Readiness</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    <span>
+                      {session.readiness_score != null
+                        ? `${Math.round(session.readiness_score)} / 100`
+                        : "Not computed yet"}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="ml-auto h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]"
+                    onClick={handleGenerateCoverLetter}
+                    disabled={
+                      isGeneratingCoverLetter || !(session.resume_id && session.job_posting_id)
+                    }
+                  >
+                    {isGeneratingCoverLetter ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-3 w-3" />
+                        <span>Generate cover letter</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
                 {session.summary && (
                   <div className="mt-4 grid gap-4 text-xs text-muted-foreground md:grid-cols-2">

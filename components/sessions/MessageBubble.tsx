@@ -35,7 +35,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         className={`max-w-[85%] text-[15px] ${
           isUser
             ? `bg-[#f4f4f4] dark:bg-[#2f2f2f] text-foreground rounded-[20px] px-5 py-2.5 ${
-                isPending ? "opacity-80" : ""
+                isPending ? "opacity-80 animate-pulse" : ""
               }`
             : isFeedback
               ? "bg-amber-50/50 dark:bg-amber-500/5 text-foreground rounded-2xl px-5 py-4 border border-amber-200/50 dark:border-amber-500/10 shadow-sm"

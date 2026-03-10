@@ -8,7 +8,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import { Loader2, Trash2 } from "lucide-react"
+import { Loader2, Trash2, Pencil } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { EditSessionDialog } from "./EditSessionDialog"
 
 function formatDate(iso: string): string {
   try {
@@ -80,6 +81,8 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<PrepSession | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<PrepSession | null>(null)
   const queryClient = useQueryClient()
 
   const sessionsQuery = useQuery({
@@ -149,7 +152,7 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
   const canCreateTargeted =
     mode === "TARGETED" && selectedResumeId && selectedJobPostingId
 
-  const canCreateQuickPractice = mode === "QUICK_PRACTICE"
+  const canCreateQuickPractice = mode === "QUICK_PRACTICE" || mode === "TUTOR_CHAT"
 
   async function handleCreateSession() {
     if (createSessionMutation.isPending) return
@@ -173,6 +176,11 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
     deleteSessionMutation.reset()
     setDeleteTarget(session)
     setIsDeleteDialogOpen(true)
+  }
+
+  function openEditDialog(session: PrepSession) {
+    setEditTarget(session)
+    setIsEditDialogOpen(true)
   }
 
   async function handleConfirmDelete() {
@@ -314,6 +322,17 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
                 />
                 <span>Quick practice</span>
               </label>
+              <label className="flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="radio"
+                  className="h-3.5 w-3.5 accent-primary"
+                  name="session-mode"
+                  value="TUTOR_CHAT"
+                  checked={mode === "TUTOR_CHAT"}
+                  onChange={() => setMode("TUTOR_CHAT")}
+                />
+                <span>Tutor chat</span>
+              </label>
             </div>
           </div>
         </div>
@@ -421,6 +440,15 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => openEditDialog(session)}
+                              className="text-muted-foreground hover:text-primary mr-1"
+                              aria-label="Edit session"
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => openDeleteDialog(session)}
                               className="text-muted-foreground hover:text-destructive"
                               aria-label="Delete session"
@@ -501,6 +529,19 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
           </div>
         )}
       </section>
+
+      {editTarget && (
+        <EditSessionDialog
+          session={editTarget}
+          open={isEditDialogOpen}
+          onOpenChange={(open) => {
+            setIsEditDialogOpen(open)
+            if (!open) {
+              setTimeout(() => setEditTarget(null), 150)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

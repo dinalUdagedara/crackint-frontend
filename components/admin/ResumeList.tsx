@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Loader2, Trash2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { listResumes, deleteAllResumes } from "@/services/resume-uploader.service"
+import { listResumes, deleteAllResumes, deleteResume } from "@/services/resume-uploader.service"
 import type { Resume } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import {
@@ -52,6 +52,8 @@ export function ResumeList() {
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null)
 
   const fetchResumes = useCallback(async () => {
     setIsLoading(true)
@@ -96,6 +98,24 @@ export function ResumeList() {
       setIsDeleting(false)
     }
   }, [meta])
+
+  const handleDeleteOne = useCallback(
+    async (resume: Resume) => {
+      setDeletingId(resume.id)
+      setError(null)
+      try {
+        await deleteResume(axiosAuth, resume.id)
+        setResumeToDelete(null)
+        setResumes((prev) => prev.filter((r) => r.id !== resume.id))
+        if (meta) setMeta({ ...meta, total_items: Math.max(0, meta.total_items - 1) })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to delete resume")
+      } finally {
+        setDeletingId(null)
+      }
+    },
+    [axiosAuth, meta]
+  )
 
   if (isLoading && resumes.length === 0) {
     return (
@@ -149,6 +169,7 @@ export function ResumeList() {
                   <th className="px-4 py-3 text-left font-medium">ID</th>
                   <th className="px-4 py-3 text-left font-medium">Preview</th>
                   <th className="px-4 py-3 text-left font-medium">Created</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,6 +188,22 @@ export function ResumeList() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(resume.created_at)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setResumeToDelete(resume)}
+                        disabled={!!deletingId}
+                        aria-label="Delete resume"
+                      >
+                        {deletingId === resume.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -226,6 +263,40 @@ export function ResumeList() {
                 </>
               ) : (
                 "Delete all"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!resumeToDelete}
+        onOpenChange={(open) => !open && setResumeToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this CV?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this CV. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingId}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                resumeToDelete && handleDeleteOne(resumeToDelete)
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!!deletingId}
+            >
+              {deletingId ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

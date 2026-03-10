@@ -4,16 +4,32 @@ import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { Loader2 } from "lucide-react"
-import { useMutation } from "@tanstack/react-query"
+import {
+  Loader2,
+  Pencil,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  Target,
+  FileText,
+} from "lucide-react"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
-import type {
-  Message,
-  PrepSessionWithMessages,
-} from "@/types/api.types"
+import { generateCoverLetter } from "@/services/cover-letter.service"
+import { getResume } from "@/services/resume-uploader.service"
+import { getJobPosting } from "@/services/job-postings.service"
+import type { Message, PrepSessionWithMessages } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import ChatInputView from "@/components/home-dashboard/chat-input/ChatInputView"
+import { EditSessionDialog } from "./EditSessionDialog"
+import { SessionMessagesArea } from "./SessionMessagesArea"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 function formatDate(iso: string): string {
   try {
@@ -21,29 +37,6 @@ function formatDate(iso: string): string {
   } catch {
     return iso
   }
-}
-
-function MessageBubble({ message }: { message: Message }) {
-  const isUser = message.sender === "USER"
-  const isFeedback = message.type === "FEEDBACK"
-
-  return (
-    <div
-      className={`flex w-full ${isUser ? "justify-end" : "justify-start"
-        }`}
-    >
-      <div
-        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm shadow-sm ${isUser
-            ? "bg-primary text-primary-foreground"
-            : isFeedback
-              ? "bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100"
-              : "bg-muted text-foreground"
-          }`}
-      >
-        <div className="whitespace-pre-wrap">{message.content}</div>
-      </div>
-    </div>
-  )
 }
 
 export function SessionChatView() {
@@ -57,9 +50,48 @@ export function SessionChatView() {
   )
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
 
-  const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState<Message | null>(null)
+  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false)
+
+  const { data: resumeData, isLoading: isResumeLoading } = useQuery({
+    queryKey: ["resume", session?.resume_id],
+    queryFn: () => getResume(axiosAuth, session!.resume_id!),
+    enabled: !!session?.resume_id && sessionStatus === "authenticated",
+  })
+
+  const { data: jobData, isLoading: isJobLoading } = useQuery({
+    queryKey: ["jobPosting", session?.job_posting_id],
+    queryFn: () => getJobPosting(axiosAuth, session!.job_posting_id!),
+    enabled: !!session?.job_posting_id && sessionStatus === "authenticated",
+  })
+
+  const resumeName = resumeData?.payload?.entities?.NAME?.[0] || (session?.resume_id ? session.resume_id.slice(0, 8) + "..." : "None")
+  const jobTitle = jobData?.payload?.entities?.JOB_TITLE?.[0] || (session?.job_posting_id ? session.job_posting_id.slice(0, 8) + "..." : "None")
+
+  const updateModeMutation = useMutation({
+    mutationFn: async (newMode: "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT") => {
+      const { updateSession } = await import("@/services/sessions.service")
+      const res = await updateSession(axiosAuth, sessionId as string, {
+        mode: newMode,
+      })
+      if (!res.success || !res.payload) {
+        throw new Error(res.message || "Failed to update session mode.")
+      }
+      return res.payload
+    },
+    onSuccess: (updatedSession) => {
+      setSession((prev) => (prev ? { ...prev, mode: updatedSession.mode } : null))
+      toast.success("Session mode updated")
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to update session mode.")
+    },
+  })
 
   useEffect(() => {
     if (!sessionId || sessionStatus !== "authenticated") {
@@ -105,7 +137,11 @@ export function SessionChatView() {
     }
   }, [session?.messages?.length])
 
-  const canSend = input.trim().length > 0
+  useEffect(() => {
+    if (messagesEndRef.current && pendingMessage) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [pendingMessage])
 
   async function refreshSession() {
     if (!sessionId) return
@@ -118,6 +154,31 @@ export function SessionChatView() {
       toast.error(
         err instanceof Error ? err.message : "Failed to refresh session"
       )
+    }
+  }
+
+  async function handleGenerateCoverLetter() {
+    if (!sessionId || isGeneratingCoverLetter) return
+    setIsGeneratingCoverLetter(true)
+    try {
+      const res = await generateCoverLetter(axiosAuth, {
+        session_id: sessionId,
+        tone: "formal",
+        length: "medium",
+      })
+      if (!res.success) {
+        throw new Error(res.message || "Failed to generate cover letter.")
+      }
+      await refreshSession()
+      toast.success("Cover letter generated from this session.")
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Cover letter generation failed, please try again later."
+      )
+    } finally {
+      setIsGeneratingCoverLetter(false)
     }
   }
 
@@ -138,8 +199,6 @@ export function SessionChatView() {
       return res.payload
     },
     onSuccess: async (payload) => {
-      toast.success("Message sent")
-      setInput("")
       // Optimistically append new messages if we already have a session in memory,
       // otherwise fall back to full refresh.
       if (session && payload?.new_messages?.length) {
@@ -154,12 +213,33 @@ export function SessionChatView() {
     onError: (err: any) => {
       toast.error(err?.message || "Failed to send message.")
     },
+    onSettled: () => {
+      setPendingMessage(null)
+    },
   })
 
-  async function handleSendMessage() {
-    if (!sessionId || !canSend || chatMutation.isPending) return
+  async function handleSendMessage(message: string) {
+    if (!sessionId || chatMutation.isPending) return
 
-    chatMutation.mutate(input)
+    const trimmed = message.trim()
+    if (!trimmed) {
+      toast.error("Please enter a message to send.")
+      return
+    }
+
+    const tempMessage: Message = {
+      id: `temp-${Date.now()}`,
+      session_id: sessionId,
+      sender: "USER",
+      type: "ANSWER",
+      content: trimmed,
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    setPendingMessage(tempMessage)
+    chatMutation.mutate(trimmed)
   }
 
   if (isLoading && !session) {
@@ -174,7 +254,7 @@ export function SessionChatView() {
     return (
       <div
         role="alert"
-        className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        className="mx-auto mt-4 max-w-5xl rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
       >
         {error}
       </div>
@@ -189,128 +269,255 @@ export function SessionChatView() {
     `${session.mode} • ${session.status}`
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="space-y-0.5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Prep session
-            </p>
-            <p className="text-sm font-semibold">
-              {sessionTitle}
-            </p>
-          </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <div>Created {formatDate(session.created_at)}</div>
-            <div>Updated {formatDate(session.updated_at)}</div>
-          </div>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span>
-            Resume:{" "}
-            {session.resume_id ? session.resume_id.slice(0, 8) + "..." : "None"}
-          </span>
-          <span>•</span>
-          <span>
-            Job:{" "}
-            {session.job_posting_id
-              ? session.job_posting_id.slice(0, 8) + "..."
-              : "None"}
-          </span>
-          <span>•</span>
-          <span>
-            Readiness score:{" "}
-            {session.readiness_score != null
-              ? Math.round(session.readiness_score)
-              : "Not computed yet"}
-          </span>
-        </div>
-        {session.summary && (
-          <div className="mt-3 grid gap-3 text-xs text-muted-foreground md:grid-cols-2">
-            {typeof (session.summary as any).strengths === "string" && (
-              <div>
-                <p className="font-medium text-foreground text-xs">
-                  Strengths
-                </p>
-                <p className="mt-1">
-                  {(session.summary as any).strengths as string}
-                </p>
-              </div>
-            )}
-            {typeof (session.summary as any).areas_for_improvement ===
-              "string" && (
-                <div>
-                  <p className="font-medium text-foreground text-xs">
-                    Areas for improvement
-                  </p>
-                  <p className="mt-1">
-                    {(session.summary as any).areas_for_improvement as string}
-                  </p>
+    <div className="flex h-full flex-col relative overflow-hidden bg-background">
+      {/* Full-width header bar across the session view */}
+      <div className="sticky top-0 z-20 w-full border border-border/70 bg-linear-to-br from-muted/40 via-background to-background backdrop-blur">
+        <div className="mx-auto flex w-full max-w-5xl px-4 py-4">
+          <div className="w-full rounded-xl  p-4 md:p-5 text-sm shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold">
+                    Prep session
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px] font-medium text-muted-foreground hover:text-primary"
+                        disabled={updateModeMutation.isPending}
+                      >
+                        {session.mode === "TUTOR_CHAT" ? (
+                          <MessageSquare className="h-3 w-3" />
+                        ) : (
+                          <Target className="h-3 w-3" />
+                        )}
+                        <span>
+                          {session.mode === "TUTOR_CHAT"
+                            ? "Tutor Chat"
+                            : session.mode === "QUICK_PRACTICE"
+                              ? "Quick Practice"
+                              : "Targeted"}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem
+                        onClick={() => updateModeMutation.mutate("TUTOR_CHAT")}
+                        className={session.mode === "TUTOR_CHAT" ? "bg-muted" : ""}
+                      >
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Tutor Chat
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          updateModeMutation.mutate(
+                            session.job_posting_id && session.resume_id
+                              ? "TARGETED"
+                              : "QUICK_PRACTICE",
+                          )
+                        }
+                        className={session.mode !== "TUTOR_CHAT" ? "bg-muted" : ""}
+                      >
+                        <Target className="mr-2 h-4 w-4" />
+                        Interview Mode
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              )}
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-hidden rounded-lg border bg-background">
-        <div className="flex h-full flex-col">
-          <div className="flex-1 space-y-3 overflow-y-auto p-4">
-            {session.messages && session.messages.length > 0 ? (
-              session.messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
-              ))
-            ) : (
-              <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-3 text-center">
-                <p className="text-base font-medium text-foreground">
-                  Start your practice
-                </p>
-                <p className="max-w-sm text-sm text-muted-foreground">
-                  Type a message below to get your first interview question, or
-                  say something like &quot;Hi&quot; to begin. Then answer each
-                  question to receive feedback and improve.
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-base font-semibold leading-snug md:text-lg">
+                    {sessionTitle}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-primary"
+                    onClick={() => setIsEditDialogOpen(true)}
+                    aria-label="Edit session name"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
+              <div className="flex flex-col items-end gap-1 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{
+                        backgroundColor:
+                          session.status === "ACTIVE"
+                            ? "#22c55e"
+                            : session.status === "COMPLETED"
+                              ? "#60a5fa"
+                              : "#a1a1aa",
+                      }}
+                    />
+                    <span className="uppercase tracking-wide">
+                      {session.status ?? "Unknown status"}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-1 h-6 w-6 text-muted-foreground hover:text-primary md:hidden"
+                    onClick={() => setIsHeaderCollapsed((prev) => !prev)}
+                    aria-label={isHeaderCollapsed ? "Expand session header" : "Collapse session header"}
+                  >
+                    {isHeaderCollapsed ? (
+                      <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronUp className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+                {!isHeaderCollapsed && (
+                  <>
+                    <div>Created {formatDate(session.created_at)}</div>
+                    <div>Updated {formatDate(session.updated_at)}</div>
+                  </>
+                )}
+              </div>
+            </div>
+            {!isHeaderCollapsed && (
+              <>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Resume</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    {isResumeLoading ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <span>{resumeName}</span>
+                    )}
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Job</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    {isJobLoading ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <span>{jobTitle}</span>
+                    )}
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Readiness</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    <span>
+                      {session.readiness_score != null
+                        ? `${Math.round(session.readiness_score)} / 100`
+                        : "Not computed yet"}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Resume</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    {isResumeLoading ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <span>{resumeName}</span>
+                    )}
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Job</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    {isJobLoading ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <span>{jobTitle}</span>
+                    )}
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
+                    <span className="font-medium text-foreground/80">Readiness</span>
+                    <span className="text-muted-foreground/70">·</span>
+                    <span>
+                      {session.readiness_score != null
+                        ? `${Math.round(session.readiness_score)} / 100`
+                        : "Not computed yet"}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="ml-auto h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]"
+                    onClick={handleGenerateCoverLetter}
+                    disabled={
+                      isGeneratingCoverLetter || !(session.resume_id && session.job_posting_id)
+                    }
+                  >
+                    {isGeneratingCoverLetter ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-3 w-3" />
+                        <span>Generate cover letter</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {session.summary && (
+                  <div className="mt-4 grid gap-4 text-xs text-muted-foreground md:grid-cols-2">
+                    {typeof (session.summary as any).strengths === "string" && (
+                      <div className="rounded-lg bg-background/60 p-3">
+                        <p className="text-[11px] font-semibold text-foreground">
+                          Strengths
+                        </p>
+                        <p className="mt-1 leading-relaxed">
+                          {(session.summary as any).strengths as string}
+                        </p>
+                      </div>
+                    )}
+                    {typeof (session.summary as any).areas_for_improvement ===
+                      "string" && (
+                        <div className="rounded-lg bg-background/60 p-3">
+                          <p className="text-[11px] font-semibold text-foreground">
+                            Areas for improvement
+                          </p>
+                          <p className="mt-1 leading-relaxed">
+                            {(session.summary as any).areas_for_improvement as string}
+                          </p>
+                        </div>
+                      )}
+                  </div>
+                )}
+              </>
             )}
-            <div ref={messagesEndRef} />
           </div>
         </div>
       </div>
 
-      <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your question or answer here..."
-          rows={3}
-          className="text-sm"
-          disabled={chatMutation.isPending}
+      <SessionMessagesArea
+        session={session}
+        messagesEndRef={messagesEndRef}
+        pendingMessage={pendingMessage}
+      />
+
+      <ChatInputView
+        onSend={handleSendMessage}
+        disabled={chatMutation.isPending}
+        mode={session.mode as any}
+        onModeChange={(newMode) => updateModeMutation.mutate(newMode)}
+        disableTargeted={!(session.job_posting_id && session.resume_id)}
+      />
+
+      {session && (
+        <EditSessionDialog
+          session={session as any}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSave={(updatedSession) => {
+            setSession((prev) => prev ? { ...prev, ...updatedSession } : null)
+          }}
         />
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <p className="text-[11px] text-muted-foreground">
-            Messages are stored as part of this session so you can review your
-            practice later.
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handleSendMessage}
-              disabled={
-                !canSend || chatMutation.isPending
-              }
-            >
-              {chatMutation.isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send"
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
-

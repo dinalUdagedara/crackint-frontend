@@ -39,7 +39,7 @@ export function SidebarFooter() {
   const isAuthenticated = !!session
 
   const footerItems = [
-    { title: "Clear conversations", href: "#", icon: Trash2, type: "link" as const },
+   
     { title: "CV Checker", href: "/cv-score", icon: FileCheck, type: "link" as const },
     { title: "CV Upload", href: "/cv-upload", icon: FileUp, type: "link" as const },
     { title: "My CVs", href: "/resumes", icon: FileText, type: "link" as const },

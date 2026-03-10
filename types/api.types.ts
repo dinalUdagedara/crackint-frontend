@@ -81,7 +81,7 @@ export interface JobPostingUpdate {
 
 // ---- Prep sessions & messages ----
 
-export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE";
+export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT";
 
 export type PrepSessionStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
 
@@ -112,9 +112,14 @@ export interface PrepSessionCreate {
   mode: PrepSessionMode;
 }
 
+export interface PrepSessionUpdate {
+  title?: string;
+  mode?: PrepSessionMode;
+}
+
 export type MessageSender = "USER" | "ASSISTANT";
 
-export type MessageType = "QUESTION" | "ANSWER" | "FEEDBACK";
+export type MessageType = "QUESTION" | "ANSWER" | "FEEDBACK" | "COVER_LETTER";
 
 export interface MessageMetadata {
   [key: string]: string;
@@ -235,3 +240,31 @@ export interface ReadinessPayload {
   gap_severity: "low" | "medium" | "high" | null;
   trend: "improving" | "stable" | "declining";
 }
+
+// ---- Cover letters ----
+
+export interface CoverLetter {
+  id: string;
+  resume_id: string;
+  job_posting_id: string;
+  session_id: string | null;
+  content: string;
+}
+
+export interface GenerateCoverLetterBody {
+  resume_id?: string | null;
+  job_posting_id?: string | null;
+  session_id?: string | null;
+  tone?: string;
+  length?: string;
+  user_notes?: string;
+}
+
+export interface UpdateCoverLetterBody {
+  content: string;
+}
+
+export interface CoverLetterDeletePayload {
+  deleted: boolean;
+}
+

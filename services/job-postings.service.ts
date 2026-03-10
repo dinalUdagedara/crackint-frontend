@@ -91,3 +91,19 @@ export async function updateJobPosting(
     return throwOnAxiosError(e)
   }
 }
+
+/** Delete a single job posting by ID (scoped to authenticated user). */
+export async function deleteJobPosting(
+  axiosAuth: AxiosInstance,
+  id: string
+): Promise<ApiResponse<{ deleted: boolean }>> {
+  try {
+    const { data } =
+      await axiosAuth.delete<ApiResponse<{ deleted: boolean }>>(
+        `/job-postings/${id}`
+      )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}

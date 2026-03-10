@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { SocketProvider } from "@/lib/context/SocketProvider";
 import { Toaster } from "@/components/ui/sonner";
 
 
@@ -41,7 +42,11 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <QueryProvider>{children}</QueryProvider>
+            <QueryProvider>
+              <SocketProvider>
+                {children}
+              </SocketProvider>
+            </QueryProvider>
             <Toaster richColors position="top-center" />
           </ThemeProvider>
         </AuthProvider>

@@ -2,15 +2,22 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft, AlertTriangle, Pencil } from "lucide-react"
+import { Loader2, ArrowLeft, AlertTriangle, Pencil, Trash2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { getJobPosting } from "@/services/job-postings.service"
+import { getJobPosting, deleteJobPosting } from "@/services/job-postings.service"
 import { EditJobPostingDialog } from "./EditJobPostingDialog"
 import { listResumes } from "@/services/resume-uploader.service"
 import { getSkillGap, MatchError } from "@/services/match.service"
-import type { JobPosting, Resume, SkillGapPayload } from "@/types/api.types"
+import {
+  deleteCoverLetter,
+  generateCoverLetter,
+  getCoverLetter,
+  updateCoverLetter,
+} from "@/services/cover-letter.service"
+import type { CoverLetter, JobPosting, Resume, SkillGapPayload } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 import { useQuery } from "@tanstack/react-query"
 import {
   Select,
@@ -20,6 +27,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 function formatDate(iso: string | null): string {
   if (!iso) return "-"
@@ -45,6 +63,15 @@ export function JobPostingDetail() {
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [coverLetter, setCoverLetter] = useState<CoverLetter | null>(null)
+  const [coverLetterContent, setCoverLetterContent] = useState("")
+  const [isCoverLetterLoading, setIsCoverLetterLoading] = useState(false)
+  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false)
+  const [coverLetterError, setCoverLetterError] = useState<string | null>(null)
+  const [isSavingCoverLetter, setIsSavingCoverLetter] = useState(false)
+  const [isDeletingCoverLetter, setIsDeletingCoverLetter] = useState(false)
 
   const resumesQuery = useQuery({
     queryKey: ["resumes", "list", 1, 100],
@@ -56,6 +83,50 @@ export function JobPostingDetail() {
   })
 
   const resumes = (resumesQuery.data ?? []) as Resume[]
+
+  useEffect(() => {
+    if (!job || !selectedResumeId) {
+      setCoverLetter(null)
+      setCoverLetterContent("")
+      setCoverLetterError(null)
+      setIsCoverLetterLoading(false)
+      return
+    }
+
+    let isMounted = true
+    async function fetchCoverLetter() {
+      setIsCoverLetterLoading(true)
+      setCoverLetterError(null)
+      try {
+        const res = await getCoverLetter(axiosAuth, selectedResumeId, job!.id)
+        if (!isMounted) return
+        if (res.success && res.payload) {
+          setCoverLetter(res.payload)
+          setCoverLetterContent(res.payload.content)
+        } else {
+          setCoverLetter(null)
+          setCoverLetterContent("")
+        }
+      } catch (err) {
+        if (!isMounted) return
+        setCoverLetterError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load cover letter. Please try again."
+        )
+      } finally {
+        if (isMounted) {
+          setIsCoverLetterLoading(false)
+        }
+      }
+    }
+
+    void fetchCoverLetter()
+
+    return () => {
+      isMounted = false
+    }
+  }, [axiosAuth, job, selectedResumeId])
 
   async function handleAnalyzeSkillGap() {
     if (!id || !selectedResumeId || isAnalyzing) return
@@ -73,6 +144,79 @@ export function JobPostingDetail() {
       )
     } finally {
       setIsAnalyzing(false)
+    }
+  }
+
+  async function handleGenerateCoverLetter() {
+    if (!job || !selectedResumeId || isGeneratingCoverLetter) return
+    setIsGeneratingCoverLetter(true)
+    setCoverLetterError(null)
+    try {
+      const res = await generateCoverLetter(axiosAuth, {
+        resume_id: selectedResumeId,
+        job_posting_id: job.id,
+        tone: "formal",
+        length: "medium",
+      })
+      if (res.success && res.payload) {
+        setCoverLetter(res.payload)
+        setCoverLetterContent(res.payload.content)
+      } else {
+        setCoverLetterError(
+          res.message || "Cover letter generation failed, please try again later."
+        )
+      }
+    } catch (err) {
+      setCoverLetterError(
+        err instanceof Error
+          ? err.message
+          : "Cover letter generation failed, please try again later."
+      )
+    } finally {
+      setIsGeneratingCoverLetter(false)
+    }
+  }
+
+  async function handleSaveCoverLetter() {
+    if (!coverLetter || !coverLetterContent.trim() || isSavingCoverLetter) return
+    setIsSavingCoverLetter(true)
+    setCoverLetterError(null)
+    try {
+      const res = await updateCoverLetter(axiosAuth, coverLetter.id, {
+        content: coverLetterContent,
+      })
+      if (!res.success || !res.payload) {
+        throw new Error(res.message || "Failed to save cover letter.")
+      }
+      setCoverLetter(res.payload)
+      setCoverLetterContent(res.payload.content)
+      toast.success("Cover letter saved")
+    } catch (err) {
+      setCoverLetterError(
+        err instanceof Error ? err.message : "Failed to save cover letter."
+      )
+    } finally {
+      setIsSavingCoverLetter(false)
+    }
+  }
+
+  async function handleDeleteCoverLetter() {
+    if (!job || !selectedResumeId || isDeletingCoverLetter) return
+    setIsDeletingCoverLetter(true)
+    setCoverLetterError(null)
+    try {
+      const res = await deleteCoverLetter(axiosAuth, selectedResumeId, job.id)
+      if (!res.success) {
+        throw new Error(res.message || "Failed to delete cover letter.")
+      }
+      setCoverLetter(null)
+      setCoverLetterContent("")
+    } catch (err) {
+      setCoverLetterError(
+        err instanceof Error ? err.message : "Failed to delete cover letter."
+      )
+    } finally {
+      setIsDeletingCoverLetter(false)
     }
   }
 
@@ -110,6 +254,20 @@ export function JobPostingDetail() {
       isMounted = false
     }
   }, [id, sessionStatus, axiosAuth])
+
+  const handleDelete = async () => {
+    if (!job) return
+    setIsDeleting(true)
+    setError(null)
+    try {
+      await deleteJobPosting(axiosAuth, job.id)
+      router.push("/job-postings")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete job posting")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -151,14 +309,25 @@ export function JobPostingDetail() {
                 {job.location ?? job.entities?.LOCATION?.[0] ?? "Location unknown"}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowEditDialog(true)}
-            >
-              <Pencil className="mr-2 size-4" />
-              Edit
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEditDialog(true)}
+              >
+                <Pencil className="mr-2 size-4" />
+                Edit
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isDeleting}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-4 text-sm md:grid-cols-2">
@@ -301,13 +470,12 @@ export function JobPostingDetail() {
                     {skillGapResult.alerts.map((a, i) => (
                       <div
                         key={i}
-                        className={`flex items-start gap-2 rounded-md px-3 py-2 text-sm ${
-                          a.severity === "high"
+                        className={`flex items-start gap-2 rounded-md px-3 py-2 text-sm ${a.severity === "high"
                             ? "border border-destructive/50 bg-destructive/10 text-destructive"
                             : a.severity === "medium"
                               ? "border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
                               : "border border-muted bg-muted/30 text-muted-foreground"
-                        }`}
+                          }`}
                       >
                         <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                         {a.message}
@@ -348,6 +516,101 @@ export function JobPostingDetail() {
             )}
           </div>
 
+          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+            <h2 className="text-sm font-medium">Generate cover letter</h2>
+            <p className="text-xs text-muted-foreground">
+              Use your selected resume and this job posting to generate a tailored cover letter.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={handleGenerateCoverLetter}
+                disabled={!selectedResumeId || isGeneratingCoverLetter}
+              >
+                {isGeneratingCoverLetter ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate cover letter"
+                )}
+              </Button>
+              {!selectedResumeId && (
+                <p className="text-xs text-muted-foreground">
+                  Select a resume above to enable cover letter generation.
+                </p>
+              )}
+            </div>
+            {coverLetter && (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveCoverLetter}
+                  disabled={isSavingCoverLetter || !coverLetterContent.trim()}
+                >
+                  {isSavingCoverLetter ? "Saving..." : "Save changes"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDeleteCoverLetter}
+                  disabled={isDeletingCoverLetter}
+                >
+                  {isDeletingCoverLetter ? "Deleting..." : "Delete cover letter"}
+                </Button>
+              </div>
+            )}
+            {coverLetterError && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {coverLetterError}
+              </div>
+            )}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="cover-letter-editor">Cover letter</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  className="h-6 gap-1 px-2 text-[11px]"
+                  onClick={async () => {
+                    if (!coverLetterContent.trim()) return
+                    try {
+                      await navigator.clipboard.writeText(coverLetterContent)
+                    } catch {
+                      // ignore copy failure
+                    }
+                  }}
+                  disabled={!coverLetterContent.trim()}
+                >
+                  Copy
+                </Button>
+              </div>
+              <Textarea
+                id="cover-letter-editor"
+                value={coverLetterContent}
+                onChange={(e) => setCoverLetterContent(e.target.value)}
+                placeholder={
+                  isCoverLetterLoading
+                    ? "Loading existing cover letter..."
+                    : "Generated cover letter will appear here. You can edit it before copying."
+                }
+                rows={12}
+                disabled={isCoverLetterLoading}
+                className="font-normal leading-7 text-sm md:text-[15px]"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Edits are not saved back to the backend yet. Copy this text to use it in your application.
+              </p>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <h2 className="text-sm font-medium">Raw job description</h2>
             <div className="rounded-lg border bg-muted/10 p-4 text-sm whitespace-pre-wrap">
@@ -359,6 +622,36 @@ export function JobPostingDetail() {
             </div>
           </div>
 
+          <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this job posting?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this job posting. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleDelete()
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <EditJobPostingDialog
             key={job.updated_at ?? job.id}
             axiosAuth={axiosAuth}

@@ -253,8 +253,8 @@ export function CoverLetterEditorView() {
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       <header className="border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-3 py-3 sm:px-4 sm:py-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Button
               type="button"
               variant="ghost"
@@ -286,7 +286,7 @@ export function CoverLetterEditorView() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"

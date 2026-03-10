@@ -133,6 +133,22 @@ export async function listResumes(
   }
 }
 
+/** Delete a single resume by ID (scoped to authenticated user). */
+export async function deleteResume(
+  axiosAuth: AxiosInstance,
+  resumeId: string
+): Promise<ApiResponse<{ deleted: boolean }>> {
+  try {
+    const { data } =
+      await axiosAuth.delete<ApiResponse<{ deleted: boolean }>>(
+        `/resumes/${resumeId}`
+      )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
 /** Delete all resumes (scoped to authenticated user). */
 export async function deleteAllResumes(
   axiosAuth: AxiosInstance

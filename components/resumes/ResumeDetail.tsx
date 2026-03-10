@@ -2,13 +2,23 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft, Pencil } from "lucide-react"
+import { Loader2, ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { getResume } from "@/services/resume-uploader.service"
+import { getResume, deleteResume } from "@/services/resume-uploader.service"
 import type { Resume } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import { EditEntitiesDialog } from "@/components/cv-upload/EditEntitiesDialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const ENTITY_LABELS: Record<string, string> = {
   NAME: "Name",
@@ -39,6 +49,8 @@ export function ResumeDetail() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (!id || sessionStatus !== "authenticated") {
@@ -74,6 +86,20 @@ export function ResumeDetail() {
   const handleEditSave = (updated: Resume) => {
     setResume(updated)
     setShowEditDialog(false)
+  }
+
+  const handleDelete = async () => {
+    if (!resume) return
+    setIsDeleting(true)
+    setError(null)
+    try {
+      await deleteResume(axiosAuth, resume.id)
+      router.push("/resumes")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete resume")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -115,14 +141,25 @@ export function ResumeDetail() {
                 ID: {resume.id.slice(0, 8)}... • Created {formatDate(resume.created_at)}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowEditDialog(true)}
-            >
-              <Pencil className="mr-2 size-4" />
-              Edit
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEditDialog(true)}
+              >
+                <Pencil className="mr-2 size-4" />
+                Edit
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isDeleting}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-4 text-sm md:grid-cols-2">
@@ -194,13 +231,45 @@ export function ResumeDetail() {
       )}
 
       {resume && (
-        <EditEntitiesDialog
+        <>
+          <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this CV?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this CV. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleDelete()
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <EditEntitiesDialog
           axiosAuth={axiosAuth}
           resume={resume}
           open={showEditDialog}
           onOpenChange={setShowEditDialog}
           onSave={handleEditSave}
         />
+        </>
       )}
     </div>
   )

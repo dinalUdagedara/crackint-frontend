@@ -2,12 +2,22 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { Loader2 } from "lucide-react"
+import { Loader2, Trash2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { listJobPostings } from "@/services/job-postings.service"
+import { listJobPostings, deleteJobPosting } from "@/services/job-postings.service"
 import type { JobPosting } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const PREVIEW_LENGTH = 120
 
@@ -50,6 +60,8 @@ export function JobPostingsList() {
   } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [jobToDelete, setJobToDelete] = useState<JobPosting | null>(null)
 
   const fetchPostings = useCallback(async () => {
     setIsLoading(true)
@@ -81,6 +93,24 @@ export function JobPostingsList() {
       setIsLoading(false)
     }
   }, [sessionStatus, fetchPostings])
+
+  const handleDeleteOne = useCallback(
+    async (job: JobPosting) => {
+      setDeletingId(job.id)
+      setError(null)
+      try {
+        await deleteJobPosting(axiosAuth, job.id)
+        setJobToDelete(null)
+        setItems((prev) => prev.filter((j) => j.id !== job.id))
+        if (meta) setMeta({ ...meta, total_items: Math.max(0, meta.total_items - 1) })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to delete job posting")
+      } finally {
+        setDeletingId(null)
+      }
+    },
+    [axiosAuth, meta]
+  )
 
   if (isLoading && items.length === 0) {
     return (
@@ -125,6 +155,7 @@ export function JobPostingsList() {
                   <th className="px-4 py-3 text-left font-medium">Location</th>
                   <th className="px-4 py-3 text-left font-medium">Deadline</th>
                   <th className="px-4 py-3 text-left font-medium">Created</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -149,6 +180,22 @@ export function JobPostingsList() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(job.created_at)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setJobToDelete(job)}
+                        disabled={!!deletingId}
+                        aria-label="Delete job posting"
+                      >
+                        {deletingId === job.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -181,6 +228,40 @@ export function JobPostingsList() {
           </Button>
         </div>
       )}
+
+      <AlertDialog
+        open={!!jobToDelete}
+        onOpenChange={(open) => !open && setJobToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this job posting?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this job posting. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingId}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                jobToDelete && handleDeleteOne(jobToDelete)
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!!deletingId}
+            >
+              {deletingId ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

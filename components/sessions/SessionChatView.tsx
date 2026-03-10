@@ -241,9 +241,9 @@ export function SessionChatView() {
   return (
     <div className="flex h-full flex-col relative overflow-hidden bg-background">
       {/* Full-width header bar across the session view */}
-      <div className="sticky top-0 z-20 w-full border-b border-border/60 bg-linear-to-r from-background via-background to-background/95 backdrop-blur">
+      <div className="sticky top-0 z-20 w-full border border-border/70 bg-linear-to-br from-muted/40 via-background to-background backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl px-4 py-4">
-          <div className="w-full rounded-xl border border-border/70 bg-linear-to-br from-muted/40 via-background to-background p-4 md:p-5 text-sm shadow-sm">
+          <div className="w-full rounded-xl  p-4 md:p-5 text-sm shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
@@ -415,7 +415,7 @@ export function SessionChatView() {
       </div>
 
       {/* Scrollable chat area lives under the header so bubbles never overlap it */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-20">
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col space-y-4">
           {session.messages && session.messages.length > 0 ? (
             session.messages.map((msg) => (

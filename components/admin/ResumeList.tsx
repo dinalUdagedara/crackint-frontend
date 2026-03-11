@@ -1,8 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { Loader2, Trash2 } from "lucide-react"
-import { listResumes, deleteAllResumes } from "@/services/resume-uploader.service"
+import { useSession } from "next-auth/react"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
+import { listResumes, deleteAllResumes, deleteResume } from "@/services/resume-uploader.service"
 import type { Resume } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,6 +38,8 @@ function getPreview(resume: Resume): string {
 }
 
 export function ResumeList() {
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
   const [resumes, setResumes] = useState<Resume[]>([])
   const [meta, setMeta] = useState<{
     page: number
@@ -47,12 +52,14 @@ export function ResumeList() {
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null)
 
   const fetchResumes = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await listResumes(page, 20)
+      const response = await listResumes(axiosAuth, page, 20)
       if (response.success && response.payload) {
         setResumes(response.payload)
         if (response.meta) {
@@ -67,17 +74,21 @@ export function ResumeList() {
     } finally {
       setIsLoading(false)
     }
-  }, [page])
+  }, [page, axiosAuth])
 
   useEffect(() => {
-    fetchResumes()
-  }, [fetchResumes])
+    if (sessionStatus === "authenticated") {
+      fetchResumes()
+    } else if (sessionStatus === "unauthenticated") {
+      setIsLoading(false)
+    }
+  }, [sessionStatus, fetchResumes])
 
   const handleDeleteAll = useCallback(async () => {
     setIsDeleting(true)
     setError(null)
     try {
-      await deleteAllResumes()
+      await deleteAllResumes(axiosAuth)
       setShowDeleteConfirm(false)
       setResumes([])
       if (meta) setMeta({ ...meta, total_items: 0 })
@@ -87,6 +98,24 @@ export function ResumeList() {
       setIsDeleting(false)
     }
   }, [meta])
+
+  const handleDeleteOne = useCallback(
+    async (resume: Resume) => {
+      setDeletingId(resume.id)
+      setError(null)
+      try {
+        await deleteResume(axiosAuth, resume.id)
+        setResumeToDelete(null)
+        setResumes((prev) => prev.filter((r) => r.id !== resume.id))
+        if (meta) setMeta({ ...meta, total_items: Math.max(0, meta.total_items - 1) })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to delete resume")
+      } finally {
+        setDeletingId(null)
+      }
+    },
+    [axiosAuth, meta]
+  )
 
   if (isLoading && resumes.length === 0) {
     return (
@@ -107,19 +136,24 @@ export function ResumeList() {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
           {meta ? `${meta.total_items} resume(s)` : "Resumes"}
         </p>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => setShowDeleteConfirm(true)}
-          disabled={resumes.length === 0 || isDeleting}
-        >
-          <Trash2 className="size-4" />
-          Delete all
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link href="/cv-upload">Upload new CV</Link>
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={resumes.length === 0 || isDeleting}
+          >
+            <Trash2 className="size-4" />
+            Delete all
+          </Button>
+        </div>
       </div>
 
       {resumes.length === 0 ? (
@@ -135,6 +169,7 @@ export function ResumeList() {
                   <th className="px-4 py-3 text-left font-medium">ID</th>
                   <th className="px-4 py-3 text-left font-medium">Preview</th>
                   <th className="px-4 py-3 text-left font-medium">Created</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,9 +178,32 @@ export function ResumeList() {
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                       {resume.id.slice(0, 8)}...
                     </td>
-                    <td className="px-4 py-3">{getPreview(resume)}</td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/resumes/${resume.id}`}
+                        className="font-medium text-foreground underline-offset-4 hover:underline"
+                      >
+                        {getPreview(resume)}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(resume.created_at)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setResumeToDelete(resume)}
+                        disabled={!!deletingId}
+                        aria-label="Delete resume"
+                      >
+                        {deletingId === resume.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -205,6 +263,40 @@ export function ResumeList() {
                 </>
               ) : (
                 "Delete all"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!resumeToDelete}
+        onOpenChange={(open) => !open && setResumeToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this CV?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this CV. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingId}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                resumeToDelete && handleDeleteOne(resumeToDelete)
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!!deletingId}
+            >
+              {deletingId ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

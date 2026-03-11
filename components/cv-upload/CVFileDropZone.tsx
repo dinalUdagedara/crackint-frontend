@@ -10,11 +10,14 @@ const MAX_FILE_SIZE_MB = 5
 type CVFileDropZoneProps = {
   onFileSelect?: (file: File | null) => void
   className?: string
+  /** "job" for job poster upload; "cv" (default) for CV upload */
+  variant?: "cv" | "job"
 }
 
 export default function CVFileDropZone({
   onFileSelect,
   className,
+  variant = "cv",
 }: CVFileDropZoneProps) {
   const id = useId()
   const [isDragging, setIsDragging] = useState(false)
@@ -25,7 +28,9 @@ export default function CVFileDropZone({
     const isPDF = file.type === "application/pdf"
     const isImage = file.type.startsWith("image/")
     if (!isPDF && !isImage) {
-      return "Please upload a PDF or image file."
+      return variant === "job"
+        ? "Please upload a PDF or image file (PNG, JPEG, WebP)."
+        : "Please upload a PDF or image file."
     }
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       return `File size must be less than ${MAX_FILE_SIZE_MB}MB.`
@@ -105,7 +110,9 @@ export default function CVFileDropZone({
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-foreground">
-            Drop your CV here or click to browse
+            {variant === "job"
+              ? "Drop job poster here or click to browse"
+              : "Drop your CV here or click to browse"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             PDF or images up to {MAX_FILE_SIZE_MB}MB

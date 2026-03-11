@@ -1,25 +1,125 @@
+"use client"
+
 import * as React from "react"
 import Link from "next/link"
-import { MessageCircle, Plus } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useSession } from "next-auth/react"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
+import { Loader2, MessageCircle, Plus, Trash2, MoreHorizontal, Pencil } from "lucide-react"
 import { SidebarFooter } from "@/components/sidebar/SidebarFooter"
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TruncatedText } from "@/components/ui/truncated-text"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import { deleteSession, listSessions } from "@/services/sessions.service"
+import type { PrepSession } from "@/types/api.types"
 
-const recentChats = [
-  { title: "SE position in IFS", href: "#" },
-  { title: "SE remote position in WSo2", href: "#" },
-  { title: "DevOps in SyscoLabs", href: "#" },
-]
+import { EditSessionDialog } from "@/components/sessions/EditSessionDialog"
+
+function formatSessionLabel(session: PrepSession): string {
+  const summary = session.summary as { [key: string]: unknown } | null
+  const title =
+    (summary && typeof summary.title === "string" && summary.title.trim()) || null
+  if (title) return title
+  const modeLabel =
+    session.mode === "QUICK_PRACTICE" ? "Quick practice" : session.mode === "TUTOR_CHAT" ? "Tutor chat" : "Targeted"
+  return `${modeLabel} • ${session.status}`
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const { status: sessionStatus } = useSession()
+  const axiosAuth = useAxiosAuth()
+
+  const [deleteTarget, setDeleteTarget] = React.useState<PrepSession | null>(
+    null
+  )
+  const [editTarget, setEditTarget] = React.useState<PrepSession | null>(
+    null
+  )
+
+  const recentSessionsQuery = useQuery({
+    queryKey: ["sessions", "recent"],
+    queryFn: async (): Promise<PrepSession[]> => {
+      const res = await listSessions(axiosAuth, 1, 10)
+      return res.payload ?? []
+    },
+    enabled: sessionStatus === "authenticated",
+  })
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await deleteSession(axiosAuth, id)
+      if (!res.success) {
+        throw new Error(res.message ?? "Failed to delete session.")
+      }
+      return res
+    },
+    onSuccess: (_, id) => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions"] })
+      void queryClient.invalidateQueries({ queryKey: ["sessions", "recent"] })
+      setDeleteTarget(null)
+      toast.success("Session deleted")
+      if (pathname === `/sessions/${id}`) {
+        router.push("/sessions")
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to delete session.")
+    },
+  })
+
+  function openDeleteDialog(session: PrepSession, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDeleteTarget(session)
+  }
+
+  function openEditDialog(session: PrepSession, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditTarget(session)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget || deleteSessionMutation.isPending) return
+    try {
+      await deleteSessionMutation.mutateAsync(deleteTarget.id)
+    } catch {
+      // error shown via mutation
+    }
+  }
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
@@ -33,7 +133,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 "data-[active=true]:bg-[#ADADFB] data-[active=true]:text-white"
               )}
             >
-              <Link href="#">
+              <Link href="/sessions">
                 <Plus className="size-4" />
                 <span>New chat</span>
               </Link>
@@ -41,22 +141,143 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarMenu className="px-3">
-          {recentChats.map((chat) => (
-            <SidebarMenuItem key={chat.title}>
-              <SidebarMenuButton asChild tooltip={chat.title}>
-                <Link href={chat.href}>
-                  <MessageCircle className="size-4 shrink-0" />
-                  <span className="truncate">{chat.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+      <SidebarContent className="overflow-hidden">
+        <ScrollArea className="flex-1 min-h-0 overflow-hidden *:data-[slot=scroll-area-viewport]:min-h-0">
+          <SidebarMenu className="px-3 py-2">
+            {recentSessionsQuery.isPending ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <SidebarMenuItem key={i}>
+                  <Skeleton className="h-9 w-full rounded-md" />
+                </SidebarMenuItem>
+              ))
+            ) : recentSessionsQuery.isError ? (
+              <SidebarMenuItem>
+                <span className="px-2 text-xs text-muted-foreground">
+                  Couldn&apos;t load sessions
+                </span>
+              </SidebarMenuItem>
+            ) : !recentSessionsQuery.data?.length ? (
+              <SidebarMenuItem>
+                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-muted-foreground/25 bg-muted/30 px-4 py-6 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-[#ADADFB]/20 text-[#ADADFB]">
+                    <MessageCircle className="size-6" strokeWidth={1.5} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      No sessions yet
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Start your first practice above to begin
+                    </p>
+                  </div>
+                </div>
+              </SidebarMenuItem>
+            ) : (
+              (recentSessionsQuery.data ?? []).map((session) => {
+                const href = `/sessions/${session.id}`
+                const label = formatSessionLabel(session)
+                const isActive = pathname === href
+                return (
+                  <SidebarMenuItem key={session.id}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className="pr-8"
+                    >
+                      <Link href={href}>
+                        <MessageCircle className="size-4 shrink-0" />
+                        <TruncatedText
+                          text={label}
+                          maxChars={20}
+                          className="text-sm"
+                        />
+                      </Link>
+                    </SidebarMenuButton>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuAction showOnHover>
+                          {deleteSessionMutation.isPending && deleteTarget?.id === session.id ? (
+                            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                          ) : (
+                            <MoreHorizontal className="size-4" />
+                          )}
+                          <span className="sr-only">More</span>
+                        </SidebarMenuAction>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-48 rounded-lg"
+                        side="bottom"
+                        align="end"
+                      >
+                        <DropdownMenuItem
+                          onClick={(e) => openEditDialog(session, e as unknown as React.MouseEvent)}
+                        >
+                          <Pencil className="mr-2 size-4 text-muted-foreground" />
+                          <span>Rename</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => openDeleteDialog(session, e as unknown as React.MouseEvent)}
+                          className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 size-4" />
+                          <span>Delete</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </SidebarMenuItem>
+                )
+              })
+            )}
+          </SidebarMenu>
+        </ScrollArea>
       </SidebarContent>
       <SidebarFooter />
       <SidebarRail />
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+            deleteSessionMutation.reset()
+          }
+        }}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete session?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the session and all its messages.
+          </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteSessionMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                void handleConfirmDelete()
+              }}
+              disabled={deleteSessionMutation.isPending}
+            >
+              {deleteSessionMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {editTarget && (
+        <EditSessionDialog
+          session={editTarget}
+          open={!!editTarget}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTimeout(() => setEditTarget(null), 150)
+            }
+          }}
+        />
+      )}
     </Sidebar>
   )
 }

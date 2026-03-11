@@ -8,6 +8,8 @@ type CVPasteAreaProps = {
   value?: string
   onChange?: (value: string) => void
   placeholder?: string
+  label?: string
+  id?: string
   className?: string
 }
 
@@ -15,15 +17,17 @@ export default function CVPasteArea({
   value = "",
   onChange,
   placeholder = "Paste your CV text here...\n\nIf PDF parsing fails or you prefer to copy-paste, paste the content from your CV below.",
+  label = "Or paste your CV text",
+  id = "cv-paste",
   className,
 }: CVPasteAreaProps) {
   return (
     <div className={cn("space-y-2", className)}>
-      <Label htmlFor="cv-paste">
-        Or paste your CV text
+      <Label htmlFor={id}>
+        {label}
       </Label>
       <Textarea
-        id="cv-paste"
+        id={id}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}

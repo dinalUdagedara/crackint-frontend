@@ -16,6 +16,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isUser = message.sender === "USER"
   const isFeedback = message.type === "FEEDBACK"
   const isCoverLetter = message.type === "COVER_LETTER"
+  const isQuestion = message.type === "QUESTION"
+  const meta = message.metadata ?? message.meta ?? {}
+  const difficulty = meta.difficulty
+  const questionType = meta.question_type
 
   const [copied, setCopied] = useState(false)
 
@@ -74,6 +78,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 : "bg-transparent text-foreground py-1.5"
           }`}
       >
+        {isQuestion && (difficulty || questionType) && (
+          <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            {difficulty && (
+              <span
+                className={`inline-flex rounded-full px-2 py-0.5 font-medium capitalize ${
+                  difficulty === "easy"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : difficulty === "medium"
+                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                }`}
+              >
+                {difficulty}
+              </span>
+            )}
+            {questionType && (
+              <span className="inline-flex rounded-full bg-muted px-2 py-0.5 font-medium capitalize">
+                {questionType.replace(/_/g, " ")}
+              </span>
+            )}
+          </div>
+        )}
         {isCoverLetter && (
           <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/5 px-2 py-0.5 font-medium uppercase tracking-wide text-primary">

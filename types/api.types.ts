@@ -131,7 +131,10 @@ export interface Message {
   sender: MessageSender;
   type: MessageType;
   content: string;
+  /** Frontend uses this; backend may return `meta` instead (v2 doc). */
   metadata: MessageMetadata;
+  /** Backend API returns this (alias for metadata). Use metadata first, then meta. */
+  meta?: Record<string, string | undefined>;
   created_at: string;
   updated_at: string;
 }
@@ -151,6 +154,19 @@ export interface PrepSessionWithMessages extends PrepSession {
 
 // ---- Session Q&A (LLM) ----
 
+/** Role level for next-question (optional in body). */
+export type RoleLevel = "INTERN" | "ASE" | "SSE" | "OTHER";
+
+/** Override requested difficulty when a next question is generated (next-question, chat, send). */
+export type PreferDifficulty = "easy" | "medium" | "hard";
+
+/** Request body for POST /sessions/{id}/next-question. */
+export interface NextQuestionRequest {
+  question_type?: "technical" | "behavioral" | "system_design";
+  role_level?: RoleLevel;
+  prefer_difficulty?: PreferDifficulty;
+}
+
 export interface NextQuestionPayload {
   question: string;
   difficulty?: string | null;
@@ -158,11 +174,18 @@ export interface NextQuestionPayload {
   message_id: string;
 }
 
+/** Request body for POST /sessions/{id}/chat and .../send. */
+export interface ChatTurnRequest {
+  content: string;
+  prefer_difficulty?: PreferDifficulty;
+}
+
 export interface EvaluateAnswerPayload {
   feedback: string;
-  score: number | null;
-  dimension_tags: string[] | null;
+  score?: number | null;
+  dimension_tags?: string[] | null;
   message_id: string;
+  redirect?: boolean;
 }
 
 export interface SendReplyPayload {

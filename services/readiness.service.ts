@@ -4,6 +4,7 @@ import type {
   ReadinessPayload,
   ReadinessSummaryResponse,
   ReadinessTrendItem,
+  HomeSummaryPayload,
 } from "@/types/api.types"
 import { SessionsError } from "./sessions.service"
 
@@ -71,6 +72,19 @@ export async function getReadinessTrend(
     const { data } = await axiosAuth.get<ApiResponse<ReadinessTrendItem[]>>(
       "/users/me/readiness/trend",
       { params }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
+export async function getHomeSummary(
+  axiosAuth: AxiosInstance
+): Promise<ApiResponse<HomeSummaryPayload>> {
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<HomeSummaryPayload>>(
+      "/users/me/home-summary"
     )
     return data
   } catch (e) {

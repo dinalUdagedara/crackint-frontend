@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { MessageCircle, ShieldAlert, Sparkles } from "lucide-react"
 import type { Summary } from "./summaries-hardcoded"
 import { cn } from "@/lib/utils"
@@ -18,6 +19,15 @@ type SummaryCardProps = {
 
 export default function SummaryCard({ summary, className }: SummaryCardProps) {
   const Icon = iconMap[summary.icon]
+  const router = useRouter()
+
+  function resolveHref(item: Summary["items"][number]): string | undefined {
+    if (item.href) return item.href
+    if (item.session_id) return `/sessions/${item.session_id}`
+    if (item.resume_id) return `/resumes/${item.resume_id}`
+    if (item.job_posting_id) return `/job-postings/${item.job_posting_id}`
+    return undefined
+  }
 
   return (
     <Card
@@ -37,7 +47,13 @@ export default function SummaryCard({ summary, className }: SummaryCardProps) {
           <li key={index}>
             <button
               type="button"
-              className="w-full rounded-lg border border-border/50 bg-muted/60 px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted"
+              className="w-full cursor-pointer rounded-lg border border-border/50 bg-muted/60 px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted hover:border-border"
+              onClick={() => {
+                const href = resolveHref(item)
+                if (href) {
+                  router.push(href)
+                }
+              }}
             >
               {item.title}
             </button>

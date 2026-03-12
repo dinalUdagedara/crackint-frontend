@@ -1,15 +1,8 @@
-export type SummaryItem = {
-  title: string;
-  description?: string;
-};
+import type { HomeSummaryCard } from "@/types/api.types";
 
-export type Summary = {
-  title: string;
-  icon: "messages" | "sparkles" | "shield";
-  items: SummaryItem[];
-};
+export type Summary = HomeSummaryCard;
 
-export const summariesHardcoded: Summary[] = [
+export const summariesHardcoded: HomeSummaryCard[] = [
   {
     title: "Jump Back In",
     icon: "messages",

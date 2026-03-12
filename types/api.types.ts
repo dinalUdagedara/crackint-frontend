@@ -290,6 +290,28 @@ export interface ReadinessTrendItem {
   title: string | null;
 }
 
+// ---- Home summary (dashboard cards) ----
+
+export interface HomeSummaryCardItem {
+  title: string;
+  description?: string;
+  href?: string;
+  session_id?: string;
+  resume_id?: string;
+  job_posting_id?: string;
+}
+
+export interface HomeSummaryCard {
+  id?: string;
+  title: string;
+  icon: "messages" | "sparkles" | "shield";
+  items: HomeSummaryCardItem[];
+}
+
+export interface HomeSummaryPayload {
+  cards: HomeSummaryCard[];
+}
+
 // ---- Cover letters ----
 
 export interface CoverLetter {

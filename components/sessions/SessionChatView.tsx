@@ -412,35 +412,6 @@ export function SessionChatView() {
                         : "Not computed yet"}
                     </span>
                   </div>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
-                    <span className="font-medium text-foreground/80">Resume</span>
-                    <span className="text-muted-foreground/70">·</span>
-                    {isResumeLoading ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <span>{resumeName}</span>
-                    )}
-                  </div>
-                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
-                    <span className="font-medium text-foreground/80">Job</span>
-                    <span className="text-muted-foreground/70">·</span>
-                    {isJobLoading ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <span>{jobTitle}</span>
-                    )}
-                  </div>
-                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
-                    <span className="font-medium text-foreground/80">Readiness</span>
-                    <span className="text-muted-foreground/70">·</span>
-                    <span>
-                      {session.readiness_score != null
-                        ? `${Math.round(session.readiness_score)} / 100`
-                        : "Not computed yet"}
-                    </span>
-                  </div>
                   <Button
                     variant="outline"
                     size="xs"

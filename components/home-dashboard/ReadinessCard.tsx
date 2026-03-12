@@ -51,8 +51,8 @@ export default function ReadinessCard() {
     ],
     queryFn: async () => {
       const res = await getReadiness(axiosAuth, {
-        resumeId: resumeId !== "__all__" ? resumeId : undefined,
-        jobPostingId: jobPostingId !== "__all__" ? jobPostingId : undefined,
+        resume_id: resumeId !== "__all__" ? resumeId : undefined,
+        job_posting_id: jobPostingId !== "__all__" ? jobPostingId : undefined,
       })
       return res.payload
     },

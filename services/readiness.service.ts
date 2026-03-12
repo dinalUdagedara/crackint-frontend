@@ -1,16 +1,79 @@
 import axios, { type AxiosInstance } from "axios"
-import type { ApiResponse, ReadinessPayload } from "@/types/api.types"
+import type {
+  ApiResponse,
+  ReadinessPayload,
+  ReadinessSummaryResponse,
+  ReadinessTrendItem,
+} from "@/types/api.types"
+import { SessionsError } from "./sessions.service"
 
-/** Get combined readiness score (CV + sessions + gap) for current user. */
+function throwOnAxiosError(e: unknown): never {
+  if (axios.isAxiosError(e) && e.response) {
+    const d = (e.response.data ?? {}) as ApiResponse<unknown>
+    throw new SessionsError(
+      d.message ?? `Request failed with status ${e.response.status}`,
+      e.response.status,
+      d.payload
+    )
+  }
+  throw e
+}
+
+export interface ReadinessParams {
+  resume_id?: string
+  job_posting_id?: string
+}
+
+export interface ReadinessSummaryParams extends ReadinessParams {
+  last_n_sessions?: number
+}
+
+export interface ReadinessTrendParams {
+  limit?: number
+}
+
 export async function getReadiness(
   axiosAuth: AxiosInstance,
-  options?: { resumeId?: string; jobPostingId?: string }
+  params?: ReadinessParams
 ): Promise<ApiResponse<ReadinessPayload>> {
-  const params = new URLSearchParams()
-  if (options?.resumeId) params.set("resume_id", options.resumeId)
-  if (options?.jobPostingId) params.set("job_posting_id", options.jobPostingId)
-  const query = params.toString()
-  const url = query ? `/users/me/readiness?${query}` : "/users/me/readiness"
-  const { data } = await axiosAuth.get<ApiResponse<ReadinessPayload>>(url)
-  return data
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<ReadinessPayload>>(
+      "/users/me/readiness",
+      { params }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
+export async function getReadinessSummary(
+  axiosAuth: AxiosInstance,
+  params?: ReadinessSummaryParams
+): Promise<ApiResponse<ReadinessSummaryResponse>> {
+  try {
+    const { data } =
+      await axiosAuth.get<ApiResponse<ReadinessSummaryResponse>>(
+        "/users/me/readiness/summary",
+        { params }
+      )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
+export async function getReadinessTrend(
+  axiosAuth: AxiosInstance,
+  params?: ReadinessTrendParams
+): Promise<ApiResponse<ReadinessTrendItem[]>> {
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<ReadinessTrendItem[]>>(
+      "/users/me/readiness/trend",
+      { params }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }

@@ -264,6 +264,32 @@ export interface ReadinessPayload {
   trend: "improving" | "stable" | "declining";
 }
 
+export type ReadinessTrend = "improving" | "stable" | "declining";
+
+export interface ReadinessSummaryResponse {
+  combined_score: number;
+  trend: ReadinessTrend;
+  cv_score: number | null;
+  session_avg: number | null;
+  gap_severity: "low" | "medium" | "high" | null;
+  session_count_total: number;
+  session_count_with_scores: number;
+  last_n_sessions: number;
+  difficulty_distribution: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+}
+
+export interface ReadinessTrendItem {
+  session_id: string;
+  created_at: string;
+  mode: PrepSessionMode | string;
+  readiness_score: number | null;
+  title: string | null;
+}
+
 // ---- Cover letters ----
 
 export interface CoverLetter {

@@ -64,10 +64,10 @@ export default function ReadinessDashboard() {
   const difficulty = summary?.difficulty_distribution
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
+    <section className="flex flex-col gap-3 sm:gap-4 min-w-0">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg">
             Readiness dashboard
           </h2>
           <p className="text-xs text-muted-foreground">
@@ -76,14 +76,14 @@ export default function ReadinessDashboard() {
           </p>
         </div>
         {state === "error" && (
-          <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+          <Button size="sm" variant="outline" onClick={() => window.location.reload()} className="shrink-0">
             Retry
           </Button>
         )}
       </div>
 
       {state === "loading" && (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3 min-w-0">
           <ReadinessSkeletonCard />
           <ReadinessSkeletonCard />
           <ReadinessSkeletonCard />
@@ -91,7 +91,7 @@ export default function ReadinessDashboard() {
       )}
 
       {state === "error" && (
-        <Card className="p-4">
+        <Card className="min-w-0 p-4">
           <p className="text-sm text-destructive">
             {error ?? "Something went wrong while loading readiness data."}
           </p>
@@ -103,9 +103,9 @@ export default function ReadinessDashboard() {
       )}
 
       {state === "success" && summary && (
-        <div className="flex flex-col gap-4">
-          <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)]">
-            <Card className="p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] min-w-0">
+            <Card className="p-4 flex flex-col gap-3 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -122,7 +122,7 @@ export default function ReadinessDashboard() {
                 </div>
                 <ReadinessTrendBadge trend={summary.trend} />
               </div>
-              <div className="grid gap-2 sm:grid-cols-3 text-xs">
+              <div className="grid gap-2 grid-cols-1 sm:grid-cols-3 text-xs">
                 {summary.cv_score !== null && (
                   <ReadinessMiniStat
                     label="CV score"
@@ -145,11 +145,11 @@ export default function ReadinessDashboard() {
               </div>
             </Card>
 
-            <Card className="p-4 flex flex-col gap-3">
+            <Card className="p-4 flex flex-col gap-3 min-w-0">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Practice stats
               </p>
-              <div className="flex items-baseline gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-3">
                 <div>
                   <div className="text-xl font-semibold">
                     {summary.session_count_with_scores}
@@ -158,7 +158,7 @@ export default function ReadinessDashboard() {
                     sessions with feedback
                   </div>
                 </div>
-                <div className="h-8 w-px bg-border" />
+                <div className="hidden h-8 w-px shrink-0 bg-border sm:block" aria-hidden />
                 <div>
                   <div className="text-xl font-semibold">
                     {summary.session_count_total}
@@ -178,17 +178,22 @@ export default function ReadinessDashboard() {
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="p-4 flex flex-col gap-3">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 min-w-0">
+            <Card className="p-4 flex flex-col gap-3 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Difficulty distribution
               </p>
               {difficulty && (difficulty.easy || difficulty.medium || difficulty.hard) ? (
-                <ReadinessDifficultyChart
-                  easy={difficulty.easy}
-                  medium={difficulty.medium}
-                  hard={difficulty.hard}
-                />
+                <>
+                  <ReadinessDifficultyChart
+                    easy={difficulty.easy}
+                    medium={difficulty.medium}
+                    hard={difficulty.hard}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Share of your practice feedback by question difficulty (easy, medium, hard) from recent sessions.
+                  </p>
+                </>
               ) : (
                 <ReadinessEmptyState
                   icon={BarChart3}
@@ -207,7 +212,7 @@ export default function ReadinessDashboard() {
               )}
             </Card>
 
-            <Card className="p-4 flex flex-col gap-3">
+            <Card className="p-4 flex flex-col gap-3 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Readiness over time
               </p>
@@ -239,7 +244,7 @@ export default function ReadinessDashboard() {
       )}
 
       {state === "success" && !hasData && (
-        <Card className="p-4">
+        <Card className="min-w-0 p-4">
           <p className="text-sm font-medium">
             Not enough data yet to build your readiness dashboard.
           </p>

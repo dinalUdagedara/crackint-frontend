@@ -6,20 +6,12 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts"
+import { PolarAngleAxis, PolarGrid, Radar, RadarChart } from "recharts"
 
 const difficultyConfig = {
-  easy: {
-    label: "Easy",
-    color: "hsl(var(--chart-1))",
-  },
-  medium: {
-    label: "Medium",
-    color: "hsl(var(--chart-2))",
-  },
-  hard: {
-    label: "Hard",
-    color: "hsl(var(--chart-3))",
+  value: {
+    label: "Sessions",
+    color: "var(--chart-1)",
   },
 } satisfies ChartConfig
 
@@ -35,9 +27,9 @@ export function ReadinessDifficultyChart({
   hard,
 }: ReadinessDifficultyChartProps) {
   const data = [
-    { key: "easy", label: "Easy", value: easy },
-    { key: "medium", label: "Medium", value: medium },
-    { key: "hard", label: "Hard", value: hard },
+    { label: "Easy", value: easy },
+    { label: "Medium", value: medium },
+    { label: "Hard", value: hard },
   ]
 
   const total = easy + medium + hard
@@ -50,34 +42,24 @@ export function ReadinessDifficultyChart({
   }
 
   return (
-    <ChartContainer config={difficultyConfig} className="h-40 w-full">
-      <BarChart data={data}>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis
-          dataKey="label"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
+    <ChartContainer
+      config={difficultyConfig}
+      className="mx-auto aspect-square max-h-[220px] w-full min-w-0"
+    >
+      <RadarChart data={data}>
+        <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+        <PolarAngleAxis dataKey="label" />
+        <PolarGrid />
+        <Radar
+          dataKey="value"
+          fill="var(--color-value)"
+          fillOpacity={0.6}
+          dot={{
+            r: 4,
+            fillOpacity: 1,
+          }}
         />
-        <YAxis
-          allowDecimals={false}
-          tickLine={false}
-          axisLine={false}
-          tickMargin={4}
-        />
-        <ChartTooltip
-          cursor={{ fill: "hsl(var(--muted) / 0.6)" }}
-          content={<ChartTooltipContent hideLabel />}
-        />
-        <Bar dataKey="value" radius={4} barSize={32}>
-          {data.map((entry) => (
-            <Cell
-              key={entry.key}
-              fill={`var(--color-${entry.key})`}
-            />
-          ))}
-        </Bar>
-      </BarChart>
+      </RadarChart>
     </ChartContainer>
   )
 }

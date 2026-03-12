@@ -26,11 +26,11 @@ export default function SummaryCard({ summary, className }: SummaryCardProps) {
         className
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/80 text-muted-foreground">
           <Icon className="size-5" />
         </div>
-        <h2 className="text-base font-semibold">{summary.title}</h2>
+        <h2 className="min-w-0 truncate text-base font-semibold">{summary.title}</h2>
       </div>
       <ul className="flex flex-col gap-2">
         {summary.items.map((item, index) => (

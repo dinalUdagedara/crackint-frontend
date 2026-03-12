@@ -56,8 +56,7 @@ export function HomeChatInput() {
   }
 
   return (
-    <div className="w-full">
-
+    <div className="w-full shrink-0">
       <ChatInputView
         onSend={handleSend}
         disabled={startTutorChatMutation.isPending}

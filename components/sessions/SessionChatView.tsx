@@ -57,6 +57,7 @@ export function SessionChatView() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<Message | null>(null)
   const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false)
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
 
   const { data: resumeData, isLoading: isResumeLoading } = useQuery({
     queryKey: ["resume", session?.resume_id],
@@ -157,6 +158,9 @@ export function SessionChatView() {
     }
   }
 
+  // Advanced mode is now a small toggle in the input; when enabled,
+  // we send prefer_difficulty=\"hard\" on the next chat turn.
+
   async function handleGenerateCoverLetter() {
     if (!sessionId || isGeneratingCoverLetter) return
     setIsGeneratingCoverLetter(true)
@@ -183,7 +187,8 @@ export function SessionChatView() {
   }
 
   const chatMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (args: { content: string; preferDifficulty?: "easy" | "medium" | "hard" }) => {
+      const { content, preferDifficulty } = args
       if (!sessionId) {
         throw new Error("Session not found")
       }
@@ -192,7 +197,12 @@ export function SessionChatView() {
         throw new Error("Please enter a message to send.")
       }
 
-      const res = await postChatTurn(axiosAuth, sessionId, trimmed)
+      const res = await postChatTurn(
+        axiosAuth,
+        sessionId,
+        trimmed,
+        preferDifficulty ? { prefer_difficulty: preferDifficulty } : undefined,
+      )
       if (!res.success || !res.payload) {
         throw new Error(res.message || "Failed to send message.")
       }
@@ -202,9 +212,14 @@ export function SessionChatView() {
       // Optimistically append new messages if we already have a session in memory,
       // otherwise fall back to full refresh.
       if (session && payload?.new_messages?.length) {
+        // Backend v2 returns message meta as "meta"; normalize to "metadata" for UI.
+        const normalized = payload.new_messages.map((msg) => ({
+          ...msg,
+          metadata: msg.metadata ?? msg.meta ?? {},
+        }))
         setSession({
           ...session,
-          messages: [...session.messages, ...payload.new_messages],
+          messages: [...session.messages, ...normalized],
         })
       } else {
         await refreshSession()
@@ -239,7 +254,11 @@ export function SessionChatView() {
     }
 
     setPendingMessage(tempMessage)
-    chatMutation.mutate(trimmed)
+    chatMutation.mutate({
+      content: trimmed,
+      preferDifficulty:
+        session && session.mode === "TUTOR_CHAT" ? undefined : difficulty ?? undefined,
+    })
   }
 
   if (isLoading && !session) {
@@ -273,7 +292,7 @@ export function SessionChatView() {
       {/* Full-width header bar across the session view */}
       <div className="sticky top-0 z-20 w-full border border-border/70 bg-linear-to-br from-muted/40 via-background to-background backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl px-4 py-4">
-          <div className="w-full rounded-xl  p-4 md:p-5 text-sm shadow-sm">
+          <div className="w-full rounded-xl  p-4 md:p-5 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
@@ -412,35 +431,6 @@ export function SessionChatView() {
                         : "Not computed yet"}
                     </span>
                   </div>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
-                    <span className="font-medium text-foreground/80">Resume</span>
-                    <span className="text-muted-foreground/70">·</span>
-                    {isResumeLoading ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <span>{resumeName}</span>
-                    )}
-                  </div>
-                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
-                    <span className="font-medium text-foreground/80">Job</span>
-                    <span className="text-muted-foreground/70">·</span>
-                    {isJobLoading ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <span>{jobTitle}</span>
-                    )}
-                  </div>
-                  <div className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1">
-                    <span className="font-medium text-foreground/80">Readiness</span>
-                    <span className="text-muted-foreground/70">·</span>
-                    <span>
-                      {session.readiness_score != null
-                        ? `${Math.round(session.readiness_score)} / 100`
-                        : "Not computed yet"}
-                    </span>
-                  </div>
                   <Button
                     variant="outline"
                     size="xs"
@@ -506,6 +496,10 @@ export function SessionChatView() {
         mode={session.mode as any}
         onModeChange={(newMode) => updateModeMutation.mutate(newMode)}
         disableTargeted={!(session.job_posting_id && session.resume_id)}
+        difficulty={session.mode !== "TUTOR_CHAT" ? difficulty : null}
+        onDifficultyChange={
+          session.mode !== "TUTOR_CHAT" ? setDifficulty : undefined
+        }
       />
 
       {session && (

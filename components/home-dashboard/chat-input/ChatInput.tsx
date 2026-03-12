@@ -1,13 +1,21 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Plus, Send } from "lucide-react"
+import { Plus, Send, Target, ChevronDown } from "lucide-react"
 import TextareaAutosize from "react-textarea-autosize"
 import { Button } from "@/components/ui/button"
 import { ClientOnly } from "@/components/common/ClientOnly"
 import { cn } from "@/lib/utils"
 import { ModeSelector, SessionMode } from "./ModeSelector"
 import { RealtimeMic } from "./RealtimeMic"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
+type DifficultyLevel = "easy" | "medium" | "hard"
 
 type ChatInputProps = {
   className?: string
@@ -17,6 +25,10 @@ type ChatInputProps = {
   mode?: SessionMode
   onModeChange?: (mode: SessionMode) => void
   disableTargeted?: boolean
+  /** Selected difficulty for the next question; null = auto (session curve). */
+  difficulty?: DifficultyLevel | null
+  /** Change handler for difficulty. */
+  onDifficultyChange?: (value: DifficultyLevel | null) => void
 }
 
 export default function ChatInput({
@@ -27,6 +39,8 @@ export default function ChatInput({
   mode,
   onModeChange,
   disableTargeted = false,
+  difficulty = null,
+  onDifficultyChange,
 }: ChatInputProps) {
   const [value, setValue] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -79,7 +93,59 @@ export default function ChatInput({
               disableTargeted={disableTargeted}
             />
           )}
-
+          {onDifficultyChange && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-7 px-2 text-[11px] rounded-full text-muted-foreground hover:bg-muted",
+                    difficulty === "easy" &&
+                      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                    difficulty === "medium" &&
+                      "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                    difficulty === "hard" &&
+                      "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+                  )}
+                  disabled={disabled}
+                >
+                  <Target className="mr-1 h-3.5 w-3.5" />
+                  <span className="capitalize">
+                    {difficulty ?? "auto"}
+                  </span>
+                  <ChevronDown className="ml-0.5 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[160px] text-[12px]">
+                <DropdownMenuItem
+                  onClick={() => onDifficultyChange(null)}
+                  className={difficulty === null ? "bg-muted" : ""}
+                >
+                  Auto difficulty
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDifficultyChange("easy")}
+                  className={difficulty === "easy" ? "bg-muted" : ""}
+                >
+                  Easy
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDifficultyChange("medium")}
+                  className={difficulty === "medium" ? "bg-muted" : ""}
+                >
+                  Medium
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDifficultyChange("hard")}
+                  className={difficulty === "hard" ? "bg-muted" : ""}
+                >
+                  Hard
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </ClientOnly>
       <TextareaAutosize

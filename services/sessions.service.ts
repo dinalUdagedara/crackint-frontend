@@ -10,6 +10,7 @@ import type {
   MessageCreate,
   MessageListPayload,
   NextQuestionPayload,
+  NextQuestionRequest,
   EvaluateAnswerPayload,
   SendReplyPayload,
   ChatTurnPayload,
@@ -119,7 +120,7 @@ export async function getSessionWithMessages(
 export async function postNextQuestion(
   axiosAuth: AxiosInstance,
   sessionId: string,
-  body?: { question_type?: string; role_level?: string }
+  body?: NextQuestionRequest
 ): Promise<ApiResponse<NextQuestionPayload>> {
   try {
     const { data } =
@@ -153,12 +154,16 @@ export async function postEvaluateAnswer(
 export async function postSendReply(
   axiosAuth: AxiosInstance,
   sessionId: string,
-  content: string
+  content: string,
+  options?: { prefer_difficulty?: "easy" | "medium" | "hard" }
 ): Promise<ApiResponse<SendReplyPayload>> {
   try {
+    const body = options?.prefer_difficulty
+      ? { content, prefer_difficulty: options.prefer_difficulty }
+      : { content }
     const { data } = await axiosAuth.post<ApiResponse<SendReplyPayload>>(
       `/sessions/${sessionId}/send`,
-      { content }
+      body
     )
     return data
   } catch (e) {
@@ -169,12 +174,16 @@ export async function postSendReply(
 export async function postChatTurn(
   axiosAuth: AxiosInstance,
   sessionId: string,
-  content: string
+  content: string,
+  options?: { prefer_difficulty?: "easy" | "medium" | "hard" }
 ): Promise<ApiResponse<ChatTurnPayload>> {
   try {
+    const body = options?.prefer_difficulty
+      ? { content, prefer_difficulty: options.prefer_difficulty }
+      : { content }
     const { data } = await axiosAuth.post<ApiResponse<ChatTurnPayload>>(
       `/sessions/${sessionId}/chat`,
-      { content }
+      body
     )
     return data
   } catch (e) {

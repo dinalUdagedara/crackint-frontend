@@ -131,7 +131,10 @@ export interface Message {
   sender: MessageSender;
   type: MessageType;
   content: string;
+  /** Frontend uses this; backend may return `meta` instead (v2 doc). */
   metadata: MessageMetadata;
+  /** Backend API returns this (alias for metadata). Use metadata first, then meta. */
+  meta?: Record<string, string | undefined>;
   created_at: string;
   updated_at: string;
 }
@@ -151,6 +154,19 @@ export interface PrepSessionWithMessages extends PrepSession {
 
 // ---- Session Q&A (LLM) ----
 
+/** Role level for next-question (optional in body). */
+export type RoleLevel = "INTERN" | "ASE" | "SSE" | "OTHER";
+
+/** Override requested difficulty when a next question is generated (next-question, chat, send). */
+export type PreferDifficulty = "easy" | "medium" | "hard";
+
+/** Request body for POST /sessions/{id}/next-question. */
+export interface NextQuestionRequest {
+  question_type?: "technical" | "behavioral" | "system_design";
+  role_level?: RoleLevel;
+  prefer_difficulty?: PreferDifficulty;
+}
+
 export interface NextQuestionPayload {
   question: string;
   difficulty?: string | null;
@@ -158,11 +174,18 @@ export interface NextQuestionPayload {
   message_id: string;
 }
 
+/** Request body for POST /sessions/{id}/chat and .../send. */
+export interface ChatTurnRequest {
+  content: string;
+  prefer_difficulty?: PreferDifficulty;
+}
+
 export interface EvaluateAnswerPayload {
   feedback: string;
-  score: number | null;
-  dimension_tags: string[] | null;
+  score?: number | null;
+  dimension_tags?: string[] | null;
   message_id: string;
+  redirect?: boolean;
 }
 
 export interface SendReplyPayload {
@@ -239,6 +262,54 @@ export interface ReadinessPayload {
   session_avg: number | null;
   gap_severity: "low" | "medium" | "high" | null;
   trend: "improving" | "stable" | "declining";
+}
+
+export type ReadinessTrend = "improving" | "stable" | "declining";
+
+export interface ReadinessSummaryResponse {
+  combined_score: number;
+  trend: ReadinessTrend;
+  cv_score: number | null;
+  session_avg: number | null;
+  gap_severity: "low" | "medium" | "high" | null;
+  session_count_total: number;
+  session_count_with_scores: number;
+  last_n_sessions: number;
+  difficulty_distribution: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+}
+
+export interface ReadinessTrendItem {
+  session_id: string;
+  created_at: string;
+  mode: PrepSessionMode | string;
+  readiness_score: number | null;
+  title: string | null;
+}
+
+// ---- Home summary (dashboard cards) ----
+
+export interface HomeSummaryCardItem {
+  title: string;
+  description?: string;
+  href?: string;
+  session_id?: string;
+  resume_id?: string;
+  job_posting_id?: string;
+}
+
+export interface HomeSummaryCard {
+  id?: string;
+  title: string;
+  icon: "messages" | "sparkles" | "shield";
+  items: HomeSummaryCardItem[];
+}
+
+export interface HomeSummaryPayload {
+  cards: HomeSummaryCard[];
 }
 
 // ---- Cover letters ----

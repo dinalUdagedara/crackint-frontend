@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
+import Link from "next/link"
 import {
   Loader2,
   Pencil,
@@ -12,6 +13,7 @@ import {
   MessageSquare,
   Target,
   FileText,
+  BarChart2,
 } from "lucide-react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -431,27 +433,41 @@ export function SessionChatView() {
                         : "Not computed yet"}
                     </span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    className="ml-auto h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]"
-                    onClick={handleGenerateCoverLetter}
-                    disabled={
-                      isGeneratingCoverLetter || !(session.resume_id && session.job_posting_id)
-                    }
-                  >
-                    {isGeneratingCoverLetter ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-3 w-3" />
-                        <span>Generate cover letter</span>
-                      </>
-                    )}
-                  </Button>
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    <Button variant="outline" size="xs" className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]" asChild>
+                      <Link
+                        href={
+                          session.resume_id && session.job_posting_id
+                            ? `/match?resume_id=${encodeURIComponent(session.resume_id)}&job_posting_id=${encodeURIComponent(session.job_posting_id)}`
+                            : "/match"
+                        }
+                      >
+                        <BarChart2 className="h-3 w-3" />
+                        <span>Analyze CV vs job</span>
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]"
+                      onClick={handleGenerateCoverLetter}
+                      disabled={
+                        isGeneratingCoverLetter || !(session.resume_id && session.job_posting_id)
+                      }
+                    >
+                      {isGeneratingCoverLetter ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-3 w-3" />
+                          <span>Generate cover letter</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 {session.summary && (
                   <div className="mt-4 grid gap-4 text-xs text-muted-foreground md:grid-cols-2">

@@ -7,7 +7,7 @@ export default function Page() {
   return (
     <div className="flex h-[calc(100vh-4rem)] min-h-0 flex-col w-full min-w-0">
       <div className="flex-1 min-h-0 overflow-y-auto min-w-0">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:gap-4 px-3 py-3 sm:p-4">
+        {/* <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:gap-4 px-3 py-3 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
@@ -36,7 +36,7 @@ export default function Page() {
               </Button>
             </div>
           </div>
-        </div>
+        </div> */}
         <div className="flex-1 min-h-0 flex flex-col">
           <HomeView />
         </div>

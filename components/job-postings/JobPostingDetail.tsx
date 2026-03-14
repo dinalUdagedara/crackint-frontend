@@ -69,7 +69,6 @@ export function JobPostingDetail() {
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
   const [isSkillGapLoading, setIsSkillGapLoading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [useLlm, setUseLlm] = useState(true)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -187,7 +186,7 @@ export function JobPostingDetail() {
     setSkillGapResult(null)
     try {
       const res = await runSkillGapAnalysis(axiosAuth, selectedResumeId, id, {
-        use_llm: useLlm,
+        use_llm: true,
       })
       if (res.success && res.payload) {
         setSkillGapResult(res.payload)
@@ -395,8 +394,6 @@ export function JobPostingDetail() {
               setSkillGapError(null)
               setSkillGapResult(null)
             }}
-            useLlm={useLlm}
-            onUseLlmChange={setUseLlm}
             onAnalyze={handleAnalyzeSkillGap}
             isSkillGapLoading={isSkillGapLoading}
             isAnalyzing={isAnalyzing}

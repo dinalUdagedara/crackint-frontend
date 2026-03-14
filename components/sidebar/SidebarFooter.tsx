@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { signIn, signOut, useSession } from "next-auth/react"
 import {
+  BarChart2,
   Briefcase,
   ClipboardList,
   FileCheck,
@@ -45,6 +46,7 @@ export function SidebarFooter() {
     { title: "My CVs", href: "/resumes", icon: FileText, type: "link" as const },
     { title: "Job Poster", href: "/job-upload", icon: ClipboardList, type: "link" as const },
     { title: "Job postings", href: "/job-postings", icon: List, type: "link" as const },
+    { title: "CV vs job", href: "/match", icon: BarChart2, type: "link" as const },
     { title: "Admin", href: "/admin", icon: LayoutDashboard, type: "link" as const },
     { title: "Job Tracker", href: "#", icon: Briefcase, type: "link" as const },
   ]

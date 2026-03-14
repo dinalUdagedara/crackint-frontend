@@ -78,8 +78,8 @@ export default function ChatInput({
           placeholder={placeholder}
           disabled={disabled}
           minRows={1}
-          maxRows={8}
-          className="min-w-18 flex-1 resize-none bg-transparent py-1.5 px-1 text-base shadow-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:whitespace-nowrap placeholder:overflow-hidden placeholder:text-ellipsis"
+          maxRows={4}
+          className="min-w-18 sm:flex-1 resize-none bg-transparent py-1.5 px-1 text-base shadow-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:whitespace-nowrap placeholder:overflow-hidden placeholder:text-ellipsis"
           aria-label="Message"
         />
         <div className="hidden shrink-0 items-center gap-1 sm:mb-0.5 sm:flex">

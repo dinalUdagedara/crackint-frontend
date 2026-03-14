@@ -113,6 +113,25 @@ export function MatchView() {
         if (err instanceof MatchError && err.status === 404) {
           setSkillGapError(null)
           setSkillGapResult(null)
+          try {
+            const postRes = await runSkillGapAnalysis(
+              axiosAuth,
+              selectedResumeId,
+              selectedJobId,
+              { use_llm: true }
+            )
+            if (!isMounted) return
+            if (postRes.success && postRes.payload) {
+              setSkillGapResult(postRes.payload)
+            }
+          } catch (postErr) {
+            if (!isMounted) return
+            setSkillGapError(
+              postErr instanceof MatchError
+                ? postErr.message
+                : "Failed to analyze match."
+            )
+          }
         } else {
           setSkillGapError(
             err instanceof MatchError ? err.message : "Failed to load analysis."

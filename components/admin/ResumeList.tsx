@@ -168,6 +168,7 @@ export function ResumeList() {
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-3 text-left font-medium">ID</th>
                   <th className="px-4 py-3 text-left font-medium">Preview</th>
+                  <th className="px-4 py-3 text-left font-medium">CV score</th>
                   <th className="px-4 py-3 text-left font-medium">Created</th>
                   <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
@@ -185,6 +186,20 @@ export function ResumeList() {
                       >
                         {getPreview(resume)}
                       </Link>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {resume.cv_score != null ? (
+                        <span>
+                          {Math.round(resume.cv_score)} / 100
+                          {resume.cv_scored_at && (
+                            <span className="block text-xs">
+                              {formatDate(resume.cv_scored_at)}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(resume.created_at)}

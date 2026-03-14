@@ -32,6 +32,10 @@ export interface Resume {
   user_id: string | null;
   entities: Record<string, string[]>;
   raw_text: string | null;
+  /** Latest CV score (0–100) if ever computed. */
+  cv_score?: number | null;
+  /** When the CV score was computed (ISO datetime). */
+  cv_scored_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -231,8 +235,11 @@ export interface LoginPayload {
 
 export interface CVScorePayload {
   score: number;
-  breakdown: { content: number; structure: number; clarity: number };
+  /** content, structure, clarity (optional keys from backend). */
+  breakdown: Record<string, number>;
   suggestions: string[];
+  /** When this score was computed (ISO datetime). Present when score is stored. */
+  scored_at?: string | null;
 }
 
 // ---- Skill-Gap ----

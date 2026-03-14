@@ -1,8 +1,9 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileUp, FileText, Loader2 } from "lucide-react"
+import { ArrowRight, FileUp, FileText, Loader2 } from "lucide-react"
 import { AIExtractionLoader } from "@/components/cv-upload/AIExtractionLoader"
 import CVFileDropZone from "@/components/cv-upload/CVFileDropZone"
 import CVPasteArea from "@/components/cv-upload/CVPasteArea"
@@ -152,32 +153,47 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                 payload={result!}
                 onReplace={handleReplaceJobPoster}
               />
-            {saveError && (
-              <div
-                role="alert"
-                className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-              >
-                {saveError}
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={handleSaveJobPosting}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Saving job posting...
-                  </>
-                ) : (
-                  "Save as job posting"
-                )}
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                This will create a stored job posting that you can reuse in prep sessions.
-              </p>
-            </div>
+              {saveError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                >
+                  {saveError}
+                </div>
+              )}
+              <section className="rounded-lg border bg-primary/5 p-4">
+                <h2 className="mb-2 text-sm font-medium text-foreground">
+                  What&apos;s next?
+                </h2>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  Save this job posting to use it in prep sessions, start
+                  interview prep, or go back to the dashboard.
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    onClick={handleSaveJobPosting}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Saving job posting...
+                      </>
+                    ) : (
+                      "Save as job posting"
+                    )}
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/sessions">
+                      Start interview prep
+                      <ArrowRight className="ml-2 size-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/">Back to dashboard</Link>
+                  </Button>
+                </div>
+              </section>
               <section className="rounded-lg border border-dashed bg-muted/20 p-6">
                 <h2 className="mb-2 text-sm font-medium text-foreground">
                   Replace job poster

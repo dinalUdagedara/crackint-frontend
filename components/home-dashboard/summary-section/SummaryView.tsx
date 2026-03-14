@@ -26,8 +26,11 @@ export default function SummaryView() {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3 min-h-0 min-w-0">
-      {cards.map((summary) => (
-        <div key={(summary as HomeSummaryCard).id ?? summary.title} className="min-w-0">
+      {cards.map((summary, index) => (
+        <div
+          key={(summary as HomeSummaryCard).id ?? `${summary.title}-${index}`}
+          className="min-w-0"
+        >
           <SummaryCard summary={summary} />
         </div>
       ))}

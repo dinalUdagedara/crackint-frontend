@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { FileUp, FileText, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { ArrowRight, FileUp, FileText, Loader2 } from "lucide-react"
 import { AIExtractionLoader } from "./AIExtractionLoader"
 import CVFileDropZone from "./CVFileDropZone"
 import CVPasteArea from "./CVPasteArea"
@@ -200,6 +201,26 @@ export default function CVUploadView() {
                 onReplace={handleReplaceResume}
                 onEdit={() => setShowEditDialog(true)}
               />
+              <section className="rounded-lg border bg-primary/5 p-4">
+                <h2 className="mb-2 text-sm font-medium text-foreground">
+                  What&apos;s next?
+                </h2>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  Your CV is ready and saved. Start a prep session to practice with this
+                  resume, or go back to the dashboard.
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button asChild>
+                    <Link href="/sessions">
+                      Start interview prep
+                      <ArrowRight className="ml-2 size-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/">Back to dashboard</Link>
+                  </Button>
+                </div>
+              </section>
               <EditEntitiesDialog
                 axiosAuth={axiosAuth}
                 resume={

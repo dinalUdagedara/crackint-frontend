@@ -334,11 +334,6 @@ export function JobPostingDetail() {
             isDeleting={isDeleting}
           />
 
-          <div className="grid gap-4 text-sm md:grid-cols-2">
-            <JobPostingMetaCard job={job} />
-            <JobPostingEntitiesCard entities={job.entities} />
-          </div>
-
           <JobPostingSkillGapSection
             resumes={resumes}
             resumesPending={resumesQuery.isPending}
@@ -356,14 +351,6 @@ export function JobPostingDetail() {
             skillGapResult={skillGapResult}
           />
 
-          <JobPostingReadinessSection
-            selectedResumeId={selectedResumeId}
-            onCheckReadiness={handleFetchRoleReadiness}
-            isRoleReadinessLoading={isRoleReadinessLoading}
-            roleReadinessError={roleReadinessError}
-            roleReadiness={roleReadiness}
-          />
-
           <JobPostingCoverLetterSection
             selectedResumeId={selectedResumeId}
             onGenerate={handleGenerateCoverLetter}
@@ -378,6 +365,23 @@ export function JobPostingDetail() {
             isCoverLetterLoading={isCoverLetterLoading}
             coverLetterError={coverLetterError}
           />
+
+
+          <div className="grid gap-4 text-sm md:grid-cols-2">
+            <JobPostingMetaCard job={job} />
+            <JobPostingEntitiesCard entities={job.entities} />
+          </div>
+
+
+          {/* 
+          <JobPostingReadinessSection
+            selectedResumeId={selectedResumeId}
+            onCheckReadiness={handleFetchRoleReadiness}
+            isRoleReadinessLoading={isRoleReadinessLoading}
+            roleReadinessError={roleReadinessError}
+            roleReadiness={roleReadiness}
+          /> */}
+
 
           <JobPostingRawDescription rawText={job.raw_text} />
 

@@ -20,6 +20,7 @@ interface JobPostingSkillGapSectionProps {
   useLlm: boolean
   onUseLlmChange: (value: boolean) => void
   onAnalyze: () => void
+  isSkillGapLoading: boolean
   isAnalyzing: boolean
   skillGapError: string | null
   skillGapResult: SkillGapPayload | null
@@ -33,10 +34,12 @@ export function JobPostingSkillGapSection({
   useLlm,
   onUseLlmChange,
   onAnalyze,
+  isSkillGapLoading,
   isAnalyzing,
   skillGapError,
   skillGapResult,
 }: JobPostingSkillGapSectionProps) {
+  const isLoading = isSkillGapLoading || isAnalyzing
   return (
     <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
       <h2 className="text-sm font-medium">Check match with my CV</h2>
@@ -83,12 +86,12 @@ export function JobPostingSkillGapSection({
         </label>
         <Button
           onClick={onAnalyze}
-          disabled={!selectedResumeId || isAnalyzing}
+          disabled={!selectedResumeId || isLoading}
         >
-          {isAnalyzing ? (
+          {isLoading ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" />
-              Analyzing...
+              {isAnalyzing ? "Analyzing..." : "Loading..."}
             </>
           ) : (
             "Analyze"
@@ -105,6 +108,15 @@ export function JobPostingSkillGapSection({
       )}
       {skillGapResult && (
         <div className="space-y-3 pt-2">
+          {skillGapResult.analyzed_at && (
+            <p className="text-xs text-muted-foreground">
+              Analyzed{" "}
+              {new Date(skillGapResult.analyzed_at).toLocaleString(undefined, {
+                dateStyle: "short",
+                timeStyle: "short",
+              })}
+            </p>
+          )}
           {skillGapResult.llm_fit_analysis && (
             <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
               <h3 className="text-xs font-medium text-muted-foreground">

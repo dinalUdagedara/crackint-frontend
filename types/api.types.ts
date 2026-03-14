@@ -261,6 +261,8 @@ export interface SkillGapPayload {
   alerts: SkillGapAlert[];
   /** Present when LLM is enabled and both resume and job have raw text. */
   llm_fit_analysis?: ResumeJobFitAnalysis | null;
+  /** When the analysis was run (POST or GET). */
+  analyzed_at?: string | null;
 }
 
 // ---- Readiness ----

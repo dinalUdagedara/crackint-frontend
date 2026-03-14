@@ -25,8 +25,8 @@ function throwOnAxiosError(e: unknown): never {
   throw e
 }
 
-/** Compare resume vs job posting; return missing skills, weak areas, suggestions, alerts. */
-export async function getSkillGap(
+/** Run skill-gap analysis (POST). Computes, persists, and returns result. Use for first run or force refresh. */
+export async function runSkillGapAnalysis(
   axiosAuth: AxiosInstance,
   resumeId: string,
   jobPostingId: string,
@@ -38,6 +38,26 @@ export async function getSkillGap(
     const { data } = await axiosAuth.post<ApiResponse<SkillGapPayload>>(
       `/match/skill-gap${params ? `?${params.toString()}` : ""}`,
       { resume_id: resumeId, job_posting_id: jobPostingId }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
+/** Get stored skill-gap analysis (GET). Returns last saved result; 404 if none. No LLM call. */
+export async function getStoredSkillGap(
+  axiosAuth: AxiosInstance,
+  resumeId: string,
+  jobPostingId: string
+): Promise<ApiResponse<SkillGapPayload>> {
+  try {
+    const params = new URLSearchParams({
+      resume_id: resumeId,
+      job_posting_id: jobPostingId,
+    })
+    const { data } = await axiosAuth.get<ApiResponse<SkillGapPayload>>(
+      `/match/skill-gap?${params.toString()}`
     )
     return data
   } catch (e) {

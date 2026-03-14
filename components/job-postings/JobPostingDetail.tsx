@@ -8,7 +8,11 @@ import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getJobPosting, deleteJobPosting } from "@/services/job-postings.service"
 import { EditJobPostingDialog } from "./EditJobPostingDialog"
 import { listResumes } from "@/services/resume-uploader.service"
-import { getSkillGap, MatchError } from "@/services/match.service"
+import {
+  getStoredSkillGap,
+  runSkillGapAnalysis,
+  MatchError,
+} from "@/services/match.service"
 import {
   deleteCoverLetter,
   generateCoverLetter,
@@ -63,6 +67,7 @@ export function JobPostingDetail() {
   const [selectedResumeId, setSelectedResumeId] = useState<string>("")
   const [skillGapResult, setSkillGapResult] = useState<SkillGapPayload | null>(null)
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
+  const [isSkillGapLoading, setIsSkillGapLoading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [useLlm, setUseLlm] = useState(true)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -134,13 +139,54 @@ export function JobPostingDetail() {
     }
   }, [axiosAuth, job, selectedResumeId])
 
+  useEffect(() => {
+    if (!id || !job || !selectedResumeId) {
+      setSkillGapResult(null)
+      setSkillGapError(null)
+      setIsSkillGapLoading(false)
+      return
+    }
+
+    let isMounted = true
+    async function fetchStoredSkillGap() {
+      setIsSkillGapLoading(true)
+      setSkillGapError(null)
+      setSkillGapResult(null)
+      try {
+        const res = await getStoredSkillGap(axiosAuth, selectedResumeId, id)
+        if (!isMounted) return
+        if (res.success && res.payload) {
+          setSkillGapResult(res.payload)
+        }
+      } catch (err) {
+        if (!isMounted) return
+        if (err instanceof MatchError && err.status === 404) {
+          setSkillGapError(null)
+          setSkillGapResult(null)
+        } else {
+          setSkillGapError(
+            err instanceof MatchError ? err.message : "Failed to load analysis."
+          )
+        }
+      } finally {
+        if (isMounted) setIsSkillGapLoading(false)
+      }
+    }
+
+    void fetchStoredSkillGap()
+
+    return () => {
+      isMounted = false
+    }
+  }, [axiosAuth, id, job, selectedResumeId])
+
   async function handleAnalyzeSkillGap() {
     if (!id || !selectedResumeId || isAnalyzing) return
     setIsAnalyzing(true)
     setSkillGapError(null)
     setSkillGapResult(null)
     try {
-      const res = await getSkillGap(axiosAuth, selectedResumeId, id, {
+      const res = await runSkillGapAnalysis(axiosAuth, selectedResumeId, id, {
         use_llm: useLlm,
       })
       if (res.success && res.payload) {
@@ -352,6 +398,7 @@ export function JobPostingDetail() {
             useLlm={useLlm}
             onUseLlmChange={setUseLlm}
             onAnalyze={handleAnalyzeSkillGap}
+            isSkillGapLoading={isSkillGapLoading}
             isAnalyzing={isAnalyzing}
             skillGapError={skillGapError}
             skillGapResult={skillGapResult}

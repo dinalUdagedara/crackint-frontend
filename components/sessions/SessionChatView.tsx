@@ -296,11 +296,9 @@ export function SessionChatView() {
         <div className="mx-auto flex w-full max-w-5xl px-4 py-4">
           <div className="w-full rounded-xl  p-4 md:p-5 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex-1 space-y-1.5">
+              <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold">
-                    Prep session
-                  </span>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -348,7 +346,7 @@ export function SessionChatView() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex w-full items-center gap-2">
                   <p className="text-base font-semibold leading-snug md:text-lg">
                     {sessionTitle}
                   </p>
@@ -396,10 +394,10 @@ export function SessionChatView() {
                   </Button>
                 </div>
                 {!isHeaderCollapsed && (
-                  <>
+                  <div className="sm:block hidden">
                     <div>Created {formatDate(session.created_at)}</div>
                     <div>Updated {formatDate(session.updated_at)}</div>
-                  </>
+                  </div>
                 )}
               </div>
             </div>

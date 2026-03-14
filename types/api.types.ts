@@ -243,6 +243,13 @@ export interface SkillGapAlert {
   severity: "low" | "medium" | "high";
 }
 
+/** Optional LLM analysis when RESUME_JOB_FIT_LLM_ENABLED and both resume/job have raw_text. */
+export interface ResumeJobFitAnalysis {
+  fit_score: number; // 0–100
+  summary: string;
+  tailored_suggestions: string[];
+}
+
 export interface SkillGapPayload {
   missing_skills: string[];
   weak_experience: boolean;
@@ -252,6 +259,8 @@ export interface SkillGapPayload {
   suggestions: string[];
   severity: "low" | "medium" | "high";
   alerts: SkillGapAlert[];
+  /** Present when LLM is enabled and both resume and job have raw text. */
+  llm_fit_analysis?: ResumeJobFitAnalysis | null;
 }
 
 // ---- Readiness ----

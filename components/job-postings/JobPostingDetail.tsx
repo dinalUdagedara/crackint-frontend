@@ -69,6 +69,7 @@ export function JobPostingDetail() {
   const [skillGapResult, setSkillGapResult] = useState<SkillGapPayload | null>(null)
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [useLlm, setUseLlm] = useState(true)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -149,7 +150,9 @@ export function JobPostingDetail() {
     setSkillGapError(null)
     setSkillGapResult(null)
     try {
-      const res = await getSkillGap(axiosAuth, selectedResumeId, id)
+      const res = await getSkillGap(axiosAuth, selectedResumeId, id, {
+        use_llm: useLlm,
+      })
       if (res.success && res.payload) {
         setSkillGapResult(res.payload)
       }
@@ -482,6 +485,15 @@ export function JobPostingDetail() {
                   </SelectContent>
                 </Select>
               </div>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={useLlm}
+                  onChange={(e) => setUseLlm(e.target.checked)}
+                  className="size-4 rounded border-input"
+                />
+                Include AI fit analysis
+              </label>
               <Button
                 onClick={handleAnalyzeSkillGap}
                 disabled={!selectedResumeId || isAnalyzing}
@@ -506,16 +518,47 @@ export function JobPostingDetail() {
             )}
             {skillGapResult && (
               <div className="space-y-3 pt-2">
+                {skillGapResult.llm_fit_analysis && (
+                  <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <h3 className="text-xs font-medium text-muted-foreground">
+                      AI fit analysis
+                    </h3>
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-2xl font-semibold tabular-nums">
+                        {skillGapResult.llm_fit_analysis.fit_score}
+                      </span>
+                      <span className="text-sm text-muted-foreground">/ 100 fit</span>
+                    </div>
+                    <p className="text-sm leading-relaxed">
+                      {skillGapResult.llm_fit_analysis.summary}
+                    </p>
+                    {skillGapResult.llm_fit_analysis.tailored_suggestions.length >
+                      0 && (
+                        <div>
+                          <h4 className="mb-1 text-xs font-medium text-muted-foreground">
+                            Tailored suggestions
+                          </h4>
+                          <ul className="list-inside list-disc space-y-0.5 text-sm text-muted-foreground">
+                            {skillGapResult.llm_fit_analysis.tailored_suggestions.map(
+                              (s, i) => (
+                                <li key={i}>{s}</li>
+                              )
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                  </div>
+                )}
                 {skillGapResult.alerts.length > 0 && (
                   <div className="space-y-2">
                     {skillGapResult.alerts.map((a, i) => (
                       <div
                         key={i}
                         className={`flex items-start gap-2 rounded-md px-3 py-2 text-sm ${a.severity === "high"
-                            ? "border border-destructive/50 bg-destructive/10 text-destructive"
-                            : a.severity === "medium"
-                              ? "border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                              : "border border-muted bg-muted/30 text-muted-foreground"
+                          ? "border border-destructive/50 bg-destructive/10 text-destructive"
+                          : a.severity === "medium"
+                            ? "border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                            : "border border-muted bg-muted/30 text-muted-foreground"
                           }`}
                       >
                         <AlertTriangle className="mt-0.5 size-4 shrink-0" />

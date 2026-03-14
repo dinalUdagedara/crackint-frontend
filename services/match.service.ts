@@ -29,11 +29,14 @@ function throwOnAxiosError(e: unknown): never {
 export async function getSkillGap(
   axiosAuth: AxiosInstance,
   resumeId: string,
-  jobPostingId: string
+  jobPostingId: string,
+  options?: { use_llm?: boolean }
 ): Promise<ApiResponse<SkillGapPayload>> {
   try {
+    const params =
+      options?.use_llm === true ? new URLSearchParams({ use_llm: "true" }) : undefined
     const { data } = await axiosAuth.post<ApiResponse<SkillGapPayload>>(
-      "/match/skill-gap",
+      `/match/skill-gap${params ? `?${params.toString()}` : ""}`,
       { resume_id: resumeId, job_posting_id: jobPostingId }
     )
     return data

@@ -317,6 +317,8 @@ export interface HomeSummaryCardItem {
   session_id?: string;
   resume_id?: string;
   job_posting_id?: string;
+  /** e.g. "open_cv" | "start_session" when the item is a primary CTA with no real data yet */
+  action_type?: string | null;
 }
 
 export interface HomeSummaryCard {

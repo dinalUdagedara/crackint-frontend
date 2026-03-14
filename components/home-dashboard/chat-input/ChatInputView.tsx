@@ -34,11 +34,11 @@ export default function ChatInputView({
   return (
     <footer
       className={cn(
-        "w-full shrink-0 border-t border-border bg-muted/30 px-4 py-3",
+        "w-full shrink-0 border-t border-border bg-muted/30 px-3 py-2 sm:px-4 sm:py-3",
         className
       )}
     >
-      <div className={cn("max-w-5xl mx-auto", actions && "flex items-center gap-2")}>
+      <div className={cn("max-w-5xl mx-auto min-w-0", actions && "flex items-center gap-2")}>
         {actions}
         <div className={actions ? "min-w-0 flex-1" : undefined}>
           <ChatInput

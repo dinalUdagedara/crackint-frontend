@@ -65,17 +65,51 @@ export default function ChatInput({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex w-full items-end gap-1 rounded-2xl border border-input bg-muted/50 px-2 py-2 focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
+        "flex w-full min-w-0 flex-col gap-2 rounded-2xl border border-input bg-muted/50 px-2 py-2 focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px] sm:flex-row sm:items-end sm:gap-1 sm:py-2",
         className
       )}
     >
+      <div className="order-1 flex min-w-0 flex-1 flex-col gap-2 sm:order-2 sm:flex-row sm:items-end sm:gap-1 sm:flex-nowrap">
+        <TextareaAutosize
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          minRows={1}
+          maxRows={8}
+          className="min-w-18 flex-1 resize-none bg-transparent py-1.5 px-1 text-base shadow-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:whitespace-nowrap placeholder:overflow-hidden placeholder:text-ellipsis"
+          aria-label="Message"
+        />
+        <div className="hidden shrink-0 items-center gap-1 sm:mb-0.5 sm:flex">
+          <RealtimeMic
+            disabled={disabled}
+            onUpdateText={(text) => {
+              if (text) {
+                setValue((prev) => text)
+              }
+            }}
+          />
+          <Button
+            type="submit"
+            variant="ghost"
+            size="icon"
+            disabled={disabled || !value.trim()}
+            className="size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Send message"
+          >
+            <Send className="size-4" />
+          </Button>
+        </div>
+      </div>
       <ClientOnly
         fallback={
           <>
             <span
               className={cn(
                 "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mb-0.5"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:mb-0.5"
               )}
               aria-hidden
             >
@@ -84,7 +118,7 @@ export default function ChatInput({
           </>
         }
       >
-        <div className="mb-0.5 flex gap-1 items-center">
+        <div className="order-2 flex shrink-0 flex-wrap items-center gap-1 sm:order-1 sm:mb-0.5 sm:flex-nowrap">
           {mode && onModeChange && (
             <ModeSelector
               mode={mode}
@@ -146,39 +180,28 @@ export default function ChatInput({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          <div className="flex items-center gap-1 sm:hidden ml-auto">
+            <RealtimeMic
+              disabled={disabled}
+              onUpdateText={(text) => {
+                if (text) {
+                  setValue((prev) => text)
+                }
+              }}
+            />
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              disabled={disabled || !value.trim()}
+              className="size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Send message"
+            >
+              <Send className="size-4" />
+            </Button>
+          </div>
         </div>
       </ClientOnly>
-      <TextareaAutosize
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={disabled}
-        minRows={1}
-        maxRows={8}
-        className="min-w-0 flex-1 resize-none bg-transparent py-1.5 px-1 shadow-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-        aria-label="Message"
-      />
-
-      <RealtimeMic
-        disabled={disabled}
-        onUpdateText={(text) => {
-          if (text) {
-            setValue((prev) => text)
-          }
-        }}
-      />
-      <Button
-        type="submit"
-        variant="ghost"
-        size="icon"
-        disabled={disabled || !value.trim()}
-        className="mb-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-        aria-label="Send message"
-      >
-        <Send className="size-4" />
-      </Button>
     </form>
   )
 }

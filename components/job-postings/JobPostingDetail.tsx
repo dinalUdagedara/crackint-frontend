@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft, AlertTriangle, Pencil, Trash2 } from "lucide-react"
+import { Loader2, ArrowLeft } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getJobPosting, deleteJobPosting } from "@/services/job-postings.service"
@@ -27,15 +27,6 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useQuery } from "@tanstack/react-query"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -45,15 +36,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "-"
-  try {
-    return new Date(iso).toLocaleString()
-  } catch {
-    return iso
-  }
-}
+import { JobPostingDetailHeader } from "./JobPostingDetailHeader"
+import { JobPostingMetaCard } from "./JobPostingMetaCard"
+import { JobPostingEntitiesCard } from "./JobPostingEntitiesCard"
+import { JobPostingSkillGapSection } from "./JobPostingSkillGapSection"
+import { JobPostingReadinessSection } from "./JobPostingReadinessSection"
+import { JobPostingCoverLetterSection } from "./JobPostingCoverLetterSection"
+import { JobPostingRawDescription } from "./JobPostingRawDescription"
 
 export function JobPostingDetail() {
   const params = useParams<{ id: string }>()
@@ -94,11 +83,6 @@ export function JobPostingDetail() {
   })
 
   const resumes = (resumesQuery.data ?? []) as Resume[]
-
-  const selectedResume = useMemo(
-    () => resumes.find((r) => r.id === selectedResumeId) ?? null,
-    [resumes, selectedResumeId]
-  )
 
   useEffect(() => {
     if (!job || !selectedResumeId) {
@@ -343,430 +327,59 @@ export function JobPostingDetail() {
 
       {!isLoading && !error && job && (
         <div className="space-y-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-bold tracking-tight">
-                {job.entities?.JOB_TITLE?.[0] ?? "Job posting"}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {job.entities?.COMPANY?.[0] ?? "Unknown company"} •{" "}
-                {job.location ?? job.entities?.LOCATION?.[0] ?? "Location unknown"}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowEditDialog(true)}
-              >
-                <Pencil className="mr-2 size-4" />
-                Edit
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={isDeleting}
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </Button>
-            </div>
-          </div>
+          <JobPostingDetailHeader
+            job={job}
+            onEdit={() => setShowEditDialog(true)}
+            onDelete={() => setShowDeleteConfirm(true)}
+            isDeleting={isDeleting}
+          />
 
           <div className="grid gap-4 text-sm md:grid-cols-2">
-            <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Meta
-              </h2>
-              <dl className="space-y-1.5">
-                <div className="flex gap-2">
-                  <dt className="w-28 text-xs text-muted-foreground">
-                    Job ID
-                  </dt>
-                  <dd className="font-mono text-xs text-foreground">
-                    {job.id}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-28 text-xs text-muted-foreground">
-                    Created
-                  </dt>
-                  <dd className="text-foreground">
-                    {formatDate(job.created_at)}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-28 text-xs text-muted-foreground">
-                    Updated
-                  </dt>
-                  <dd className="text-foreground">
-                    {formatDate(job.updated_at)}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-28 text-xs text-muted-foreground">
-                    Deadline
-                  </dt>
-                  <dd className="text-foreground">
-                    {formatDate(job.deadline)}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Extracted fields
-              </h2>
-              <div className="space-y-1.5">
-                {Object.entries(job.entities ?? {}).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No structured entities stored for this job.
-                  </p>
-                ) : (
-                  Object.entries(job.entities).map(([key, values]) => (
-                    <div key={key} className="space-y-1">
-                      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {key.replace(/_/g, " ")}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {values.map((v) => (
-                          <span
-                            key={v}
-                            className="inline-flex rounded-md border bg-background px-2.5 py-1 text-xs text-foreground"
-                          >
-                            {v}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <JobPostingMetaCard job={job} />
+            <JobPostingEntitiesCard entities={job.entities} />
           </div>
 
-          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-            <h2 className="text-sm font-medium">Check match with my CV</h2>
-            <p className="text-xs text-muted-foreground">
-              Compare your resume with this job posting to see missing skills and
-              suggestions.
-            </p>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[200px] space-y-1.5">
-                <Label htmlFor="skill-gap-resume">Resume</Label>
-                <Select
-                  value={selectedResumeId}
-                  onValueChange={(v) => {
-                    setSelectedResumeId(v)
-                    setSkillGapError(null)
-                    setSkillGapResult(null)
-                  }}
-                  disabled={resumesQuery.isPending}
-                >
-                  <SelectTrigger id="skill-gap-resume">
-                    <SelectValue
-                      placeholder={
-                        resumesQuery.isPending
-                          ? "Loading..."
-                          : resumes.length
-                            ? "Select a resume"
-                            : "No resumes available"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {resumes.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.entities?.NAME?.[0] ?? r.id.slice(0, 8) + "..."}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={useLlm}
-                  onChange={(e) => setUseLlm(e.target.checked)}
-                  className="size-4 rounded border-input"
-                />
-                Include AI fit analysis
-              </label>
-              <Button
-                onClick={handleAnalyzeSkillGap}
-                disabled={!selectedResumeId || isAnalyzing}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  "Analyze"
-                )}
-              </Button>
-            </div>
-            {skillGapError && (
-              <div
-                role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-              >
-                {skillGapError}
-              </div>
-            )}
-            {skillGapResult && (
-              <div className="space-y-3 pt-2">
-                {skillGapResult.llm_fit_analysis && (
-                  <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                    <h3 className="text-xs font-medium text-muted-foreground">
-                      AI fit analysis
-                    </h3>
-                    <div className="flex flex-wrap items-baseline gap-2">
-                      <span className="text-2xl font-semibold tabular-nums">
-                        {skillGapResult.llm_fit_analysis.fit_score}
-                      </span>
-                      <span className="text-sm text-muted-foreground">/ 100 fit</span>
-                    </div>
-                    <p className="text-sm leading-relaxed">
-                      {skillGapResult.llm_fit_analysis.summary}
-                    </p>
-                    {skillGapResult.llm_fit_analysis.tailored_suggestions.length >
-                      0 && (
-                        <div>
-                          <h4 className="mb-1 text-xs font-medium text-muted-foreground">
-                            Tailored suggestions
-                          </h4>
-                          <ul className="list-inside list-disc space-y-0.5 text-sm text-muted-foreground">
-                            {skillGapResult.llm_fit_analysis.tailored_suggestions.map(
-                              (s, i) => (
-                                <li key={i}>{s}</li>
-                              )
-                            )}
-                          </ul>
-                        </div>
-                      )}
-                  </div>
-                )}
-                {skillGapResult.alerts.length > 0 && (
-                  <div className="space-y-2">
-                    {skillGapResult.alerts.map((a, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-start gap-2 rounded-md px-3 py-2 text-sm ${a.severity === "high"
-                          ? "border border-destructive/50 bg-destructive/10 text-destructive"
-                          : a.severity === "medium"
-                            ? "border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                            : "border border-muted bg-muted/30 text-muted-foreground"
-                          }`}
-                      >
-                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                        {a.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {skillGapResult.missing_skills.length > 0 && (
-                  <div>
-                    <h3 className="mb-1.5 text-xs font-medium text-muted-foreground">
-                      Missing skills
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {skillGapResult.missing_skills.map((s) => (
-                        <span
-                          key={s}
-                          className="inline-flex rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs text-destructive"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {skillGapResult.suggestions.length > 0 && (
-                  <div>
-                    <h3 className="mb-1.5 text-xs font-medium text-muted-foreground">
-                      Suggestions
-                    </h3>
-                    <ul className="list-inside list-disc space-y-0.5 text-sm text-muted-foreground">
-                      {skillGapResult.suggestions.map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <JobPostingSkillGapSection
+            resumes={resumes}
+            resumesPending={resumesQuery.isPending}
+            selectedResumeId={selectedResumeId}
+            onResumeChange={(v) => {
+              setSelectedResumeId(v)
+              setSkillGapError(null)
+              setSkillGapResult(null)
+            }}
+            useLlm={useLlm}
+            onUseLlmChange={setUseLlm}
+            onAnalyze={handleAnalyzeSkillGap}
+            isAnalyzing={isAnalyzing}
+            skillGapError={skillGapError}
+            skillGapResult={skillGapResult}
+          />
 
-          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-medium">Role-specific readiness</h2>
-                <p className="text-xs text-muted-foreground">
-                  Combined readiness score for this job and selected CV (CV match, past
-                  sessions, and gaps).
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleFetchRoleReadiness}
-                disabled={!selectedResumeId || isRoleReadinessLoading}
-              >
-                {isRoleReadinessLoading ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  "Check readiness"
-                )}
-              </Button>
-            </div>
-            {roleReadinessError && (
-              <div
-                role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-              >
-                {roleReadinessError}
-              </div>
-            )}
-            {roleReadiness && (
-              <div className="flex flex-wrap items-center gap-4 text-xs">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Readiness
-                  </span>
-                  <span className="text-sm font-semibold">
-                    {Math.round(roleReadiness.combined_score)} / 100
-                  </span>
-                </div>
-                {roleReadiness.cv_score !== null && (
-                  <span className="rounded-full bg-muted px-2.5 py-1">
-                    CV {Math.round(roleReadiness.cv_score)} / 100
-                  </span>
-                )}
-                {roleReadiness.session_avg !== null && (
-                  <span className="rounded-full bg-muted px-2.5 py-1">
-                    Sessions avg {Math.round(roleReadiness.session_avg)} / 100
-                  </span>
-                )}
-                {roleReadiness.gap_severity && (
-                  <span className="rounded-full bg-muted px-2.5 py-1">
-                    Gap: {roleReadiness.gap_severity}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          <JobPostingReadinessSection
+            selectedResumeId={selectedResumeId}
+            onCheckReadiness={handleFetchRoleReadiness}
+            isRoleReadinessLoading={isRoleReadinessLoading}
+            roleReadinessError={roleReadinessError}
+            roleReadiness={roleReadiness}
+          />
 
-          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-            <h2 className="text-sm font-medium">Generate cover letter</h2>
-            <p className="text-xs text-muted-foreground">
-              Use your selected resume and this job posting to generate a tailored cover letter.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={handleGenerateCoverLetter}
-                disabled={!selectedResumeId || isGeneratingCoverLetter}
-              >
-                {isGeneratingCoverLetter ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  "Generate cover letter"
-                )}
-              </Button>
-              {!selectedResumeId && (
-                <p className="text-xs text-muted-foreground">
-                  Select a resume above to enable cover letter generation.
-                </p>
-              )}
-            </div>
-            {coverLetter && (
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSaveCoverLetter}
-                  disabled={isSavingCoverLetter || !coverLetterContent.trim()}
-                >
-                  {isSavingCoverLetter ? "Saving..." : "Save changes"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDeleteCoverLetter}
-                  disabled={isDeletingCoverLetter}
-                >
-                  {isDeletingCoverLetter ? "Deleting..." : "Delete cover letter"}
-                </Button>
-              </div>
-            )}
-            {coverLetterError && (
-              <div
-                role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-              >
-                {coverLetterError}
-              </div>
-            )}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="cover-letter-editor">Cover letter</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  className="h-6 gap-1 px-2 text-[11px]"
-                  onClick={async () => {
-                    if (!coverLetterContent.trim()) return
-                    try {
-                      await navigator.clipboard.writeText(coverLetterContent)
-                    } catch {
-                      // ignore copy failure
-                    }
-                  }}
-                  disabled={!coverLetterContent.trim()}
-                >
-                  Copy
-                </Button>
-              </div>
-              <Textarea
-                id="cover-letter-editor"
-                value={coverLetterContent}
-                onChange={(e) => setCoverLetterContent(e.target.value)}
-                placeholder={
-                  isCoverLetterLoading
-                    ? "Loading existing cover letter..."
-                    : "Generated cover letter will appear here. You can edit it before copying."
-                }
-                rows={12}
-                disabled={isCoverLetterLoading}
-                className="font-normal leading-7 text-sm md:text-[15px]"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Edits are not saved back to the backend yet. Copy this text to use it in your application.
-              </p>
-            </div>
-          </div>
+          <JobPostingCoverLetterSection
+            selectedResumeId={selectedResumeId}
+            onGenerate={handleGenerateCoverLetter}
+            isGeneratingCoverLetter={isGeneratingCoverLetter}
+            coverLetterContent={coverLetterContent}
+            onCoverLetterContentChange={setCoverLetterContent}
+            hasCoverLetter={!!coverLetter}
+            onSave={handleSaveCoverLetter}
+            onDelete={handleDeleteCoverLetter}
+            isSavingCoverLetter={isSavingCoverLetter}
+            isDeletingCoverLetter={isDeletingCoverLetter}
+            isCoverLetterLoading={isCoverLetterLoading}
+            coverLetterError={coverLetterError}
+          />
 
-          <div className="space-y-2">
-            <h2 className="text-sm font-medium">Raw job description</h2>
-            <div className="rounded-lg border bg-muted/10 p-4 text-sm whitespace-pre-wrap">
-              {job.raw_text || (
-                <span className="text-muted-foreground">
-                  No raw text stored for this job posting.
-                </span>
-              )}
-            </div>
-          </div>
+          <JobPostingRawDescription rawText={job.raw_text} />
 
           <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
             <AlertDialogContent>
@@ -814,4 +427,3 @@ export function JobPostingDetail() {
     </div>
   )
 }
-

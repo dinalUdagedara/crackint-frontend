@@ -12,14 +12,22 @@ const iconMap = {
   shield: ShieldAlert,
 }
 
+const MAX_ITEMS_PER_CARD = 3
+
 type SummaryCardProps = {
   summary: Summary
   className?: string
+  maxItems?: number
 }
 
-export default function SummaryCard({ summary, className }: SummaryCardProps) {
+export default function SummaryCard({
+  summary,
+  className,
+  maxItems = MAX_ITEMS_PER_CARD,
+}: SummaryCardProps) {
   const Icon = iconMap[summary.icon]
   const router = useRouter()
+  const items = summary.items.slice(0, maxItems)
 
   function resolveHref(item: Summary["items"][number]): string | undefined {
     if (item.href) return item.href
@@ -43,7 +51,7 @@ export default function SummaryCard({ summary, className }: SummaryCardProps) {
         <h2 className="min-w-0 truncate text-base font-semibold">{summary.title}</h2>
       </div>
       <ul className="flex flex-col gap-2">
-        {summary.items.map((item, index) => (
+        {items.map((item, index) => (
           <li key={index}>
             <button
               type="button"

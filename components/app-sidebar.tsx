@@ -182,7 +182,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className="pr-8"
+                      className={cn(
+                        "pr-8",
+                        isActive &&
+                        "bg-[#ADADFB]/20 text-foreground border-l-2 border-[#ADADFB] rounded-l-md data-[active=true]:bg-[#ADADFB]/20 data-[active=true]:text-foreground"
+                      )}
                     >
                       <Link href={href}>
                         <MessageCircle className="size-4 shrink-0" />
@@ -246,9 +250,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete session?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete the session and all its messages.
-          </AlertDialogDescription>
+            <AlertDialogDescription>
+              This will permanently delete the session and all its messages.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteSessionMutation.isPending}>

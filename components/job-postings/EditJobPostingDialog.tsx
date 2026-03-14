@@ -55,9 +55,14 @@ export function EditJobPostingDialog({
   onOpenChange,
   onSave,
 }: EditJobPostingDialogProps) {
-  const [entities, setEntities] = useState<Record<string, string[]>>(() => ({
-    ...(job.entities ?? {}),
-  }))
+  const [entities, setEntities] = useState<Record<string, string[]>>(() => {
+    const fromJob = job.entities ?? {}
+    return {
+      JOB_TITLE: fromJob.JOB_TITLE ?? [],
+      COMPANY: fromJob.COMPANY ?? [],
+      ...fromJob,
+    }
+  })
   const [rawText, setRawText] = useState(job.raw_text ?? "")
   const [location, setLocation] = useState(job.location ?? "")
   const [deadline, setDeadline] = useState(() => {
@@ -103,7 +108,10 @@ export function EditJobPostingDialog({
     }
   }, [axiosAuth, job.id, entities, rawText, location, deadline, onSave, onOpenChange])
 
-  const entityEntries = Object.entries(entities)
+  const singleValueKeys = ["JOB_TITLE", "COMPANY"]
+  const otherEntityEntries = Object.entries(entities)
+    .filter(([key]) => !singleValueKeys.includes(key))
+    .sort(([a], [b]) => a.localeCompare(b))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,10 +126,32 @@ export function EditJobPostingDialog({
                 {error}
               </p>
             )}
-            {entityEntries.length > 0 && (
+            <div className="grid gap-2">
+              <Label htmlFor="edit-job-JOB_TITLE">Job title</Label>
+              <Input
+                id="edit-job-JOB_TITLE"
+                value={(entities.JOB_TITLE ?? [])[0] ?? ""}
+                onChange={(e) =>
+                  handleEntityChange("JOB_TITLE", e.target.value ? [e.target.value] : [])
+                }
+                placeholder="e.g. Senior Software Engineer"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-job-COMPANY">Company</Label>
+              <Input
+                id="edit-job-COMPANY"
+                value={(entities.COMPANY ?? [])[0] ?? ""}
+                onChange={(e) =>
+                  handleEntityChange("COMPANY", e.target.value ? [e.target.value] : [])
+                }
+                placeholder="e.g. Acme Inc."
+              />
+            </div>
+            {otherEntityEntries.length > 0 && (
               <>
-                <h3 className="text-sm font-medium">Extracted fields</h3>
-                {entityEntries.map(([key, values]) => (
+                <h3 className="text-sm font-medium">Other extracted fields</h3>
+                {otherEntityEntries.map(([key, values]) => (
                   <div key={key} className="grid gap-2">
                     <Label htmlFor={`edit-job-${key}`}>
                       {getEntityLabel(key)}

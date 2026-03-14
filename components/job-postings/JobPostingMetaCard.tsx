@@ -10,9 +10,6 @@ interface JobPostingMetaCardProps {
 export function JobPostingMetaCard({ job }: JobPostingMetaCardProps) {
   return (
     <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Meta
-      </h2>
       <dl className="space-y-1.5">
         <div className="flex gap-2">
           <dt className="w-28 text-xs text-muted-foreground">Job ID</dt>

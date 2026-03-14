@@ -9,9 +9,6 @@ export function JobPostingEntitiesCard({ entities }: JobPostingEntitiesCardProps
 
   return (
     <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Extracted fields
-      </h2>
       <div className="space-y-1.5">
         {entries.length === 0 ? (
           <p className="text-sm text-muted-foreground">

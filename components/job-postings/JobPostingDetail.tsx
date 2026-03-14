@@ -36,6 +36,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { JobPostingDetailHeader } from "./JobPostingDetailHeader"
 import { JobPostingMetaCard } from "./JobPostingMetaCard"
 import { JobPostingEntitiesCard } from "./JobPostingEntitiesCard"
@@ -367,23 +373,32 @@ export function JobPostingDetail() {
           />
 
 
-          <div className="grid gap-4 text-sm md:grid-cols-2">
-            <JobPostingMetaCard job={job} />
-            <JobPostingEntitiesCard entities={job.entities} />
-          </div>
-
-
-          {/* 
-          <JobPostingReadinessSection
-            selectedResumeId={selectedResumeId}
-            onCheckReadiness={handleFetchRoleReadiness}
-            isRoleReadinessLoading={isRoleReadinessLoading}
-            roleReadinessError={roleReadinessError}
-            roleReadiness={roleReadiness}
-          /> */}
-
-
-          <JobPostingRawDescription rawText={job.raw_text} />
+          <Accordion type="single" collapsible defaultValue="meta" className="rounded-lg border bg-muted/10 text-sm">
+            <AccordionItem value="meta" className="border-b px-4 last:border-b-0">
+              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                Meta
+              </AccordionTrigger>
+              <AccordionContent>
+                <JobPostingMetaCard job={job} />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="entities" className="border-b px-4 last:border-b-0">
+              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                Extracted fields
+              </AccordionTrigger>
+              <AccordionContent>
+                <JobPostingEntitiesCard entities={job.entities} />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="raw" className="border-b px-4 last:border-b-0">
+              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                Raw job description
+              </AccordionTrigger>
+              <AccordionContent>
+                <JobPostingRawDescription rawText={job.raw_text} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
             <AlertDialogContent>

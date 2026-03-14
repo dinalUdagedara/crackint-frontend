@@ -227,9 +227,14 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
               practice mode without a specific role.
             </p>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/cv-upload">Upload CV</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/cv-upload">Upload CV</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/job-upload">Upload job poster</Link>
+            </Button>
+          </div>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr,1.2fr,auto]">

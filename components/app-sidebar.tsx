@@ -129,8 +129,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               size="lg"
               className={cn(
-                "bg-[#ADADFB]/80 text-white hover:bg-[#ADADFB] hover:text-white rounded-lg",
-                "data-[active=true]:bg-[#ADADFB] data-[active=true]:text-white"
+                "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground rounded-lg",
+                "data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground"
               )}
             >
               <Link href="/sessions">
@@ -159,7 +159,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             ) : !recentSessionsQuery.data?.length ? (
               <SidebarMenuItem>
                 <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-muted-foreground/25 bg-muted/30 px-4 py-6 text-center">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-[#ADADFB]/20 text-[#ADADFB]">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/20 text-sidebar-primary">
                     <MessageCircle className="size-6" strokeWidth={1.5} />
                   </div>
                   <div className="space-y-1">
@@ -185,7 +185,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       className={cn(
                         "pr-8",
                         isActive &&
-                        "bg-[#ADADFB]/20 text-foreground border-l-2 border-[#ADADFB] rounded-l-md data-[active=true]:bg-[#ADADFB]/20 data-[active=true]:text-foreground"
+                        "bg-sidebar-primary/20 text-foreground border-l-2 border-sidebar-primary rounded-l-md data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-foreground"
                       )}
                     >
                       <Link href={href}>

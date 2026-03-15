@@ -2,12 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { Loader2, Trash2 } from "lucide-react"
+import { Loader2, Trash2, AlertCircle, FileUp } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { listResumes, deleteAllResumes, deleteResume } from "@/services/resume-uploader.service"
 import type { Resume } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -119,138 +126,162 @@ export function ResumeList() {
 
   if (isLoading && resumes.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      </div>
+      <Card className="rounded-2xl border-border/60 shadow-sm">
+        <CardContent className="flex items-center justify-center py-16">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {error && (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="flex items-start gap-3 rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          {error}
+          <AlertCircle className="size-5 shrink-0 mt-0.5" />
+          <span>{error}</span>
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">
-          {meta ? `${meta.total_items} resume(s)` : "Resumes"}
-        </p>
-        <div className="flex gap-2">
-          <Button asChild size="sm" variant="outline">
-            <Link href="/cv-upload">Upload new CV</Link>
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowDeleteConfirm(true)}
-            disabled={resumes.length === 0 || isDeleting}
-          >
-            <Trash2 className="size-4" />
-            Delete all
-          </Button>
-        </div>
-      </div>
-
-      {resumes.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          No resumes yet. Upload a CV from the CV Upload page.
-        </div>
-      ) : (
-        <div className="rounded-lg border">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium">ID</th>
-                  <th className="px-4 py-3 text-left font-medium">Preview</th>
-                  <th className="px-4 py-3 text-left font-medium">CV score</th>
-                  <th className="px-4 py-3 text-left font-medium">Created</th>
-                  <th className="px-4 py-3 text-right font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resumes.map((resume) => (
-                  <tr key={resume.id} className="border-b last:border-0">
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                      {resume.id.slice(0, 8)}...
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/resumes/${resume.id}`}
-                        className="font-medium text-foreground underline-offset-4 hover:underline"
-                      >
-                        {getPreview(resume)}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {resume.cv_score != null ? (
-                        <span>
-                          {Math.round(resume.cv_score)} / 100
-                          {resume.cv_scored_at && (
-                            <span className="block text-xs">
-                              {formatDate(resume.cv_scored_at)}
-                            </span>
-                          )}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {formatDate(resume.created_at)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => setResumeToDelete(resume)}
-                        disabled={!!deletingId}
-                        aria-label="Delete resume"
-                      >
-                        {deletingId === resume.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-4" />
-                        )}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-base">Your resumes</CardTitle>
+              <CardDescription>
+                {meta ? `${meta.total_items} resume(s)` : "View and manage your CVs."}
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild size="sm" className="rounded-xl">
+                <Link href="/cv-upload">
+                  <FileUp className="size-4" />
+                  Upload new CV
+                </Link>
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="rounded-xl"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={resumes.length === 0 || isDeleting}
+              >
+                <Trash2 className="size-4" />
+                Delete all
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {meta && meta.total_pages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1 || isLoading}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {meta.total_pages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= meta.total_pages || isLoading}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+        </CardHeader>
+        <CardContent className="p-0">
+          {resumes.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 px-6 py-12 text-center">
+              <p className="text-sm text-muted-foreground">
+                No resumes yet. Upload a CV to get started.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-4 rounded-xl">
+                <Link href="/cv-upload">
+                  <FileUp className="size-4" />
+                  Upload CV
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60 bg-muted/30">
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">ID</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Preview</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">CV score</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Created</th>
+                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resumes.map((resume) => (
+                      <tr key={resume.id} className="border-b border-border/60 last:border-0 transition-colors hover:bg-muted/20">
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                          {resume.id.slice(0, 8)}...
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/resumes/${resume.id}`}
+                            className="font-medium text-foreground underline-offset-4 hover:underline"
+                          >
+                            {getPreview(resume)}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {resume.cv_score != null ? (
+                            <span>
+                              {Math.round(resume.cv_score)} / 100
+                              {resume.cv_scored_at && (
+                                <span className="block text-xs">
+                                  {formatDate(resume.cv_scored_at)}
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {formatDate(resume.created_at)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setResumeToDelete(resume)}
+                            disabled={!!deletingId}
+                            aria-label="Delete resume"
+                          >
+                            {deletingId === resume.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="size-4" />
+                            )}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {meta && meta.total_pages > 1 && (
+                <div className="flex items-center justify-center gap-2 border-t border-border/60 px-4 py-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg"
+                    disabled={page <= 1 || isLoading}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {page} of {meta.total_pages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg"
+                    disabled={page >= meta.total_pages || isLoading}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

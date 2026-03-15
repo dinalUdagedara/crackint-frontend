@@ -63,6 +63,17 @@ export interface JobPosting {
   deadline: string | null;
   created_at: string;
   updated_at: string;
+  /** User-defined display order (lower = earlier). */
+  display_order?: number | null;
+  cover_image_url?: string | null;
+  notes?: string | null;
+  questions_to_ask?: string | null;
+  interview_at?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  talking_points?: string | null;
+  application_url?: string | null;
+  stage?: string | null;
 }
 
 export type JobPostingListPayload = JobPosting[];
@@ -73,6 +84,15 @@ export interface JobPostingCreate {
   raw_text: string | null;
   location: string | null;
   deadline: string | null;
+  cover_image_url?: string | null;
+  notes?: string | null;
+  questions_to_ask?: string | null;
+  interview_at?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  talking_points?: string | null;
+  application_url?: string | null;
+  stage?: string | null;
 }
 
 /** Body for PATCH job posting: only provided fields are updated. */
@@ -81,6 +101,16 @@ export interface JobPostingUpdate {
   raw_text?: string | null;
   location?: string | null;
   deadline?: string | null;
+  display_order?: number | null;
+  cover_image_url?: string | null;
+  notes?: string | null;
+  questions_to_ask?: string | null;
+  interview_at?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  talking_points?: string | null;
+  application_url?: string | null;
+  stage?: string | null;
 }
 
 // ---- Prep sessions & messages ----

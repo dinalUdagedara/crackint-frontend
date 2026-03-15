@@ -2,10 +2,30 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
+import { toast } from "sonner"
+import {
+  DndContext,
+  closestCenter,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
-import { listJobPostings, deleteJobPosting } from "@/services/job-postings.service"
+import {
+  listJobPostings,
+  deleteJobPosting,
+  reorderJobPostings,
+} from "@/services/job-postings.service"
 import { listSessions } from "@/services/sessions.service"
 import type { JobPosting, PrepSession } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
@@ -22,6 +42,7 @@ import {
   Loader2,
   AlertCircle,
   ClipboardList,
+  ChevronDown,
 } from "lucide-react"
 import {
   AlertDialog,
@@ -33,7 +54,44 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { EditJobPostingDialog } from "./EditJobPostingDialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
+function SortableJobCard({
+  id,
+  children,
+}: {
+  id: string
+  children: React.ReactNode
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={isDragging ? "opacity-50" : undefined}
+    >
+      {children}
+    </div>
+  )
+}
 
 const PREVIEW_LENGTH = 80
 
@@ -88,9 +146,50 @@ function daysUntilDeadline(deadline: string | null): number | null {
   }
 }
 
+function daysUntilInterview(interviewAt: string | null | undefined): number | null {
+  if (!interviewAt) return null
+  try {
+    const today = new Date()
+    const d = new Date(interviewAt)
+    return Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  } catch {
+    return null
+  }
+}
+
+function formatSessionLabel(session: PrepSession): string {
+  const summary = session.summary as { title?: string } | null
+  const title = summary?.title && typeof summary.title === "string" ? summary.title.trim() : null
+  if (title) return title
+  try {
+    return new Date(session.created_at).toLocaleDateString()
+  } catch {
+    return "Session"
+  }
+}
+
+const STAGE_LABELS: Record<string, string> = {
+  saved: "Saved",
+  preparing: "Preparing",
+  applied: "Applied",
+  interview: "Interview",
+  offer: "Offer",
+}
+
+function getStageLabel(stage: string | null | undefined): string {
+  if (!stage) return ""
+  return STAGE_LABELS[stage.toLowerCase()] ?? stage
+}
+
 export function JobTrackerGrid() {
   const { status: sessionStatus } = useSession()
   const axiosAuth = useAxiosAuth()
+  const queryClient = useQueryClient()
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  )
   const [items, setItems] = useState<JobPosting[]>([])
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState<{
@@ -103,7 +202,6 @@ export function JobTrackerGrid() {
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [jobToDelete, setJobToDelete] = useState<JobPosting | null>(null)
-  const [editJob, setEditJob] = useState<JobPosting | null>(null)
 
   const fetchPostings = useCallback(async () => {
     setIsLoading(true)
@@ -176,14 +274,29 @@ export function JobTrackerGrid() {
     [axiosAuth, meta]
   )
 
-  const handleEditSave = useCallback(
-    (updated: JobPosting) => {
-      setEditJob(null)
-      setItems((prev) =>
-        prev.map((j) => (j.id === updated.id ? updated : j))
-      )
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event
+      if (!over || active.id === over.id) return
+      const oldIndex = items.findIndex((j) => j.id === active.id)
+      const newIndex = items.findIndex((j) => j.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return
+      const previousItems = items.slice()
+      const newOrder = arrayMove(previousItems, oldIndex, newIndex)
+      setItems(newOrder)
+      try {
+        await reorderJobPostings(
+          axiosAuth,
+          newOrder.map((j) => j.id)
+        )
+        void queryClient.invalidateQueries({ queryKey: ["job-postings"] })
+        toast.success("Order updated")
+      } catch {
+        setItems(previousItems)
+        toast.error("Failed to reorder. Please try again.")
+      }
     },
-    []
+    [axiosAuth, items, queryClient]
   )
 
   if (sessionStatus !== "authenticated") return null
@@ -240,27 +353,48 @@ export function JobTrackerGrid() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {items.map((job) => {
-              const sessions = sessionsByJob[job.id] ?? []
-              const sessionCount = sessions.length
-              const daysLeft = daysUntilDeadline(job.deadline)
-              const isUrgent = daysLeft !== null && daysLeft <= 7
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={items.map((j) => j.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {items.map((job) => {
+                  const sessions = sessionsByJob[job.id] ?? []
+                  const sessionCount = sessions.length
+                  const daysLeft = daysUntilDeadline(job.deadline)
+                  const isUrgent = daysLeft !== null && daysLeft <= 7
+                  const interviewDays = daysUntilInterview(job.interview_at)
+                  const hasStage = job.stage && getStageLabel(job.stage)
 
-              return (
-                <Card
-                  key={job.id}
-                  className="group overflow-hidden rounded-2xl border-border/60 shadow-sm transition-shadow duration-200 hover:shadow-md"
-                >
+                  return (
+                    <SortableJobCard key={job.id} id={job.id}>
+                      <Card
+                        className="group overflow-hidden rounded-2xl border-border/60 shadow-sm transition-shadow duration-200 hover:shadow-md"
+                      >
                   {/* Cover */}
-                  <div
-                    className={`relative h-28 overflow-hidden ${getCoverGradient(job.id)}`}
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center opacity-40">
-                      <span className="text-5xl font-bold text-primary">
-                        {getInitial(job)}
-                      </span>
-                    </div>
+                  <div className="relative h-28 overflow-hidden">
+                    {job.cover_image_url ? (
+                      <img
+                        src={job.cover_image_url}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className={`absolute inset-0 ${getCoverGradient(job.id)}`}
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                          <span className="text-5xl font-bold text-primary">
+                            {getInitial(job)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-5">
@@ -297,28 +431,45 @@ export function JobTrackerGrid() {
                           {sessionCount === 1 ? "session" : "sessions"}
                         </div>
                       )}
+                      {job.interview_at && (
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <Calendar className="size-4 shrink-0" />
+                          {interviewDays !== null
+                            ? interviewDays <= 0
+                              ? "Interview today or past"
+                              : `Interview in ${interviewDays} days`
+                            : "Interview scheduled"}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Status Badge */}
-                    {sessionCount === 0 ? (
-                      <Badge
-                        variant="secondary"
-                        className="mb-4 bg-muted text-muted-foreground"
-                      >
-                        Not started
-                      </Badge>
-                    ) : sessionCount >= 3 ? (
-                      <Badge className="mb-4 border-0 bg-primary/15 text-primary">
-                        Well prepared
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="secondary"
-                        className="mb-4 border-primary/30 bg-primary/10 text-primary"
-                      >
-                        In progress
-                      </Badge>
-                    )}
+                    {/* Stage + Status Badges */}
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {hasStage && (
+                        <Badge variant="outline" className="border-border">
+                          {getStageLabel(job.stage)}
+                        </Badge>
+                      )}
+                      {sessionCount === 0 ? (
+                        <Badge
+                          variant="secondary"
+                          className="bg-muted text-muted-foreground"
+                        >
+                          Not started
+                        </Badge>
+                      ) : sessionCount >= 3 ? (
+                        <Badge className="border-0 bg-primary/15 text-primary">
+                          Well prepared
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="secondary"
+                          className="border-primary/30 bg-primary/10 text-primary"
+                        >
+                          In progress
+                        </Badge>
+                      )}
+                    </div>
 
                     <div className="mb-4 flex gap-2">
                       <Button
@@ -336,25 +487,63 @@ export function JobTrackerGrid() {
                         variant="ghost"
                         size="sm"
                         className="size-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                        onClick={() => setEditJob(job)}
+                        asChild
                         aria-label="Edit job"
                       >
-                        <Edit2 className="size-4" />
+                        <Link href={`/job-postings/${job.id}/edit`}>
+                          <Edit2 className="size-4" />
+                        </Link>
                       </Button>
                     </div>
 
-                    <Button
-                      className="w-full gap-2 rounded-xl font-medium"
-                      size="sm"
-                      asChild
-                    >
-                      <Link href="/sessions">
-                        {sessionCount === 0
-                          ? "Start practice"
-                          : "Continue practice"}
-                        <ChevronRight className="size-4" />
-                      </Link>
-                    </Button>
+                    {/* Practice: 0 -> /sessions, 1 -> /sessions/id, 2+ -> dropdown */}
+                    {sessionCount === 0 ? (
+                      <Button
+                        className="w-full gap-2 rounded-xl font-medium"
+                        size="sm"
+                        asChild
+                      >
+                        <Link href="/sessions">
+                          Start practice
+                          <ChevronRight className="size-4" />
+                        </Link>
+                      </Button>
+                    ) : sessionCount === 1 ? (
+                      <Button
+                        className="w-full gap-2 rounded-xl font-medium"
+                        size="sm"
+                        asChild
+                      >
+                        <Link href={`/sessions/${sessions[0].id}`}>
+                          Continue practice
+                          <ChevronRight className="size-4" />
+                        </Link>
+                      </Button>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            className="w-full gap-2 rounded-xl font-medium"
+                            size="sm"
+                          >
+                            Continue practice
+                            <ChevronDown className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-56">
+                          {sessions.map((session) => (
+                            <DropdownMenuItem key={session.id} asChild>
+                              <Link href={`/sessions/${session.id}`}>
+                                {formatSessionLabel(session)}
+                              </Link>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuItem asChild>
+                            <Link href="/sessions">Start new session</Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
 
                     <button
                       type="button"
@@ -365,9 +554,12 @@ export function JobTrackerGrid() {
                     </button>
                   </div>
                 </Card>
-              )
-            })}
-          </div>
+                    </SortableJobCard>
+                  )
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           {meta && meta.total_pages > 1 && (
             <div className="flex items-center justify-center gap-2">
@@ -465,15 +657,6 @@ export function JobTrackerGrid() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {editJob && (
-        <EditJobPostingDialog
-          axiosAuth={axiosAuth}
-          job={editJob}
-          open={!!editJob}
-          onOpenChange={(open) => !open && setEditJob(null)}
-          onSave={handleEditSave}
-        />
-      )}
     </div>
   )
 }

@@ -142,7 +142,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent className="overflow-hidden">
-        <ScrollArea className="flex-1 min-h-0 overflow-hidden *:data-[slot=scroll-area-viewport]:min-h-0">
+        <ScrollArea className="flex-1 min-h-0 overflow-hidden *:data-[slot=scroll-area-viewport]:min-h-0 border-b">
           <SidebarMenu className="px-3 py-2">
             {recentSessionsQuery.isPending ? (
               Array.from({ length: 3 }).map((_, i) => (

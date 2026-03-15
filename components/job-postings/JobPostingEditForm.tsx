@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { CoverImageField } from "./CoverImageField"
 import { EntityTagInput } from "./EntityTagInput"
 
 /** Editable list of strings: one input per item, add/remove. Serializes to newline-separated string. */
@@ -443,15 +444,11 @@ export function JobPostingEditForm({
               </span>
             </div>
             <div className="p-4">
-              <Label htmlFor={`${idPrefix}-cover`} className="sr-only">
-                Cover image URL
-              </Label>
-              <Input
-                id={`${idPrefix}-cover`}
-                type="url"
+              <CoverImageField
+                idPrefix={idPrefix}
                 value={coverImageUrl}
-                onChange={(e) => setCoverImageUrl(e.target.value)}
-                placeholder="https://..."
+                onChange={setCoverImageUrl}
+                axiosAuth={axiosAuth}
               />
             </div>
           </div>

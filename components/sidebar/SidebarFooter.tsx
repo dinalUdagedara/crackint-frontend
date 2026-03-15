@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { signIn, signOut, useSession } from "next-auth/react"
 import {
   BarChart2,
@@ -36,6 +37,7 @@ const sidebarTriggerClass =
   "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent disabled:pointer-events-none disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 h-8 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2"
 
 export function SidebarFooter() {
+  const pathname = usePathname()
   const { data: session, status } = useSession()
   const isAuthenticated = !!session
 
@@ -60,9 +62,19 @@ export function SidebarFooter() {
       <SidebarMenu>
         {footerItems.map((item) => {
           const Icon = item.icon
+          const isActive = item.href !== "#" && pathname === item.href
           return (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title}>
+              <SidebarMenuButton
+                asChild
+                tooltip={item.title}
+                isActive={isActive}
+                className={cn(
+                  "pr-2",
+                  isActive &&
+                    "bg-sidebar-primary/20 text-foreground border-l-2 border-sidebar-primary rounded-l-md data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-foreground"
+                )}
+              >
                 <Link href={item.href}>
                   <Icon />
                   <TruncatedText

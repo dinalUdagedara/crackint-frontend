@@ -44,7 +44,14 @@ function getPreview(resume: Resume): string {
   return resume.id.slice(0, 8) + "..."
 }
 
-export function ResumeList() {
+type ResumeListProps = {
+  /** Card title, e.g. "Your resumes" or "All resumes" */
+  title?: string
+  /** Card description when no meta yet */
+  description?: string
+}
+
+export function ResumeList({ title = "Your resumes", description = "View and manage your CVs." }: ResumeListProps = {}) {
   const { status: sessionStatus } = useSession()
   const axiosAuth = useAxiosAuth()
   const [resumes, setResumes] = useState<Resume[]>([])
@@ -150,9 +157,9 @@ export function ResumeList() {
         <CardHeader className="pb-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-base">Your resumes</CardTitle>
+              <CardTitle className="text-base">{title}</CardTitle>
               <CardDescription>
-                {meta ? `${meta.total_items} resume(s)` : "View and manage your CVs."}
+                {meta ? `${meta.total_items} resume(s)` : description}
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">

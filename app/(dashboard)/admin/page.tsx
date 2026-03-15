@@ -1,18 +1,30 @@
+import { LayoutDashboard } from "lucide-react"
 import { ResumeList } from "@/components/admin/ResumeList"
 
 export default function AdminPage() {
   return (
-    <div className="flex-1 overflow-auto p-4">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <section>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Admin dashboard
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            View and manage all resumes. No auth required for now.
-          </p>
-        </section>
-        <ResumeList />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="mx-auto flex max-w-4xl flex-col gap-6">
+          {/* Hero */}
+          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-muted/40 via-muted/20 to-transparent p-6 shadow-sm md:p-8">
+            <div className="relative flex items-start gap-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <LayoutDashboard className="size-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl font-semibold tracking-tight">
+                  Admin dashboard
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  View and manage all resumes. No auth required for now.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <ResumeList title="All resumes" description="View and manage all CVs in the system." />
+        </div>
       </div>
     </div>
   )

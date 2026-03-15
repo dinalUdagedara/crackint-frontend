@@ -148,6 +148,8 @@ export type JobPostingEditFormProps = {
   showCancel?: boolean
   /** Optional id prefix for form fields (default "edit-job") */
   idPrefix?: string
+  /** When true, hide the cover image card (e.g. when cover is edited via a dialog) */
+  hideCoverCard?: boolean
 }
 
 export function JobPostingEditForm({
@@ -157,6 +159,7 @@ export function JobPostingEditForm({
   onCancel,
   showCancel = true,
   idPrefix = "edit-job",
+  hideCoverCard = false,
 }: JobPostingEditFormProps) {
   const [entities, setEntities] = useState<Record<string, string[]>>(() => ({
     JOB_TITLE: job.entities?.JOB_TITLE ?? [],
@@ -433,25 +436,27 @@ export function JobPostingEditForm({
 
         {/* Prep & details – content-matched cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Cover image */}
-          <div className="rounded-xl border border-border/60 bg-muted/10">
-            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Image className="size-4" />
+          {/* Cover image – hidden when hideCoverCard (e.g. edit page uses dialog) */}
+          {!hideCoverCard && (
+            <div id={`${idPrefix}-cover-card`} className="rounded-xl border border-border/60 bg-muted/10 scroll-mt-4">
+              <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Image className="size-4" />
+                </div>
+                <span className="text-sm font-medium text-foreground">
+                  Cover image
+                </span>
               </div>
-              <span className="text-sm font-medium text-foreground">
-                Cover image
-              </span>
+              <div className="p-4">
+                <CoverImageField
+                  idPrefix={idPrefix}
+                  value={coverImageUrl}
+                  onChange={setCoverImageUrl}
+                  axiosAuth={axiosAuth}
+                />
+              </div>
             </div>
-            <div className="p-4">
-              <CoverImageField
-                idPrefix={idPrefix}
-                value={coverImageUrl}
-                onChange={setCoverImageUrl}
-                axiosAuth={axiosAuth}
-              />
-            </div>
-          </div>
+          )}
 
           {/* Notes */}
           <div className="rounded-xl border border-border/60 bg-muted/10 sm:col-span-2 lg:col-span-3">

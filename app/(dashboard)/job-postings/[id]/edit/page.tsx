@@ -12,6 +12,7 @@ import { getJobPosting } from "@/services/job-postings.service"
 import type { JobPosting } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { JobPostingCoverWithEdit } from "@/components/job-postings/JobPostingCoverWithEdit"
 import { JobPostingEditForm } from "@/components/job-postings/JobPostingEditForm"
 
 export default function JobPostingEditPage() {
@@ -99,6 +100,14 @@ export default function JobPostingEditPage() {
 
         {job && (
           <>
+            <JobPostingCoverWithEdit
+              job={job}
+              axiosAuth={axiosAuth}
+              onCoverUpdate={setJob}
+              onSuccess={(message) => toast.success(message)}
+              onError={(message) => toast.error(message)}
+            />
+
             <div className="rounded-xl border border-border/60 bg-muted/10 px-5 py-4">
               <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
                 <Pencil className="size-5 text-primary" />
@@ -116,6 +125,7 @@ export default function JobPostingEditPage() {
               onCancel={handleCancel}
               showCancel={true}
               idPrefix="edit-page"
+              hideCoverCard={true}
             />
           </>
         )}

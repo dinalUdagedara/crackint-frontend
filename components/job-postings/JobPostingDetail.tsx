@@ -3,7 +3,20 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft, ChevronDown, ExternalLink } from "lucide-react"
+import {
+  Loader2,
+  ArrowLeft,
+  ChevronDown,
+  ExternalLink,
+  Plus,
+  FileText,
+  HelpCircle,
+  MessageSquare,
+  User,
+  Calendar,
+  Link2,
+  Flag,
+} from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getJobPosting, deleteJobPosting } from "@/services/job-postings.service"
@@ -560,8 +573,240 @@ export function JobPostingDetail() {
           />
 
 
-          <Accordion type="single" collapsible defaultValue="meta" className="rounded-lg border bg-muted/10 text-sm">
-            <AccordionItem value="meta" className="border-b px-4 last:border-b-0">
+          {/* Prep & details: content-matched cards */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">
+              Prep &amp; details
+            </h2>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {/* Notes – notepad-style card */}
+              <div className="flex flex-col rounded-xl border border-border/60 bg-muted/10 sm:col-span-2 lg:col-span-3">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <FileText className="size-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      Notes
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-7 shrink-0" asChild aria-label="Add or edit notes">
+                    <Link href={`/job-postings/${job.id}/edit`}>
+                      <Plus className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+                <div className="min-h-16 flex-1 px-4 py-3">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                    {job.notes?.trim() ?? (
+                      <span className="text-muted-foreground">No notes yet. Add key requirements or follow-ups.</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Questions to ask – list style */}
+              <div className="flex flex-col rounded-xl border border-border/60 bg-muted/10 sm:col-span-2">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <HelpCircle className="size-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      Questions to ask
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-7 shrink-0" asChild aria-label="Add or edit questions">
+                    <Link href={`/job-postings/${job.id}/edit`}>
+                      <Plus className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+                <div className="min-h-16 flex-1 px-4 py-3">
+                  {job.questions_to_ask?.trim() ? (
+                    <ul className="space-y-2 text-sm text-foreground">
+                      {job.questions_to_ask
+                        .trim()
+                        .split(/\n+/)
+                        .filter(Boolean)
+                        .map((q, i) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                            <span className="leading-relaxed">{q.trim()}</span>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No questions added yet. Jot down what you want to ask in the interview.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Talking points – bullet list */}
+              <div className="flex flex-col rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <MessageSquare className="size-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      Talking points
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-7 shrink-0" asChild aria-label="Add or edit talking points">
+                    <Link href={`/job-postings/${job.id}/edit`}>
+                      <Plus className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+                <div className="min-h-16 flex-1 px-4 py-3">
+                  {job.talking_points?.trim() ? (
+                    <ul className="space-y-2 text-sm text-foreground">
+                      {job.talking_points
+                        .trim()
+                        .split(/\n+/)
+                        .filter(Boolean)
+                        .map((p, i) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                            <span className="leading-relaxed">{p.trim()}</span>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Add key points you want to mention.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact – contact card */}
+              <div className="rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <User className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    Contact
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {job.contact_name || job.contact_email ? (
+                    <div className="space-y-1.5 text-sm">
+                      {job.contact_name && (
+                        <p className="font-medium text-foreground">{job.contact_name}</p>
+                      )}
+                      {job.contact_email && (
+                        <a
+                          href={`mailto:${job.contact_email}`}
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          {job.contact_email}
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No contact saved.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Application URL – primary action card */}
+              <div className="rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Link2 className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    Job ad
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {job.application_url?.trim() ? (
+                    <Button variant="outline" size="sm" className="w-full gap-2" asChild>
+                      <a
+                        href={job.application_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open job ad
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No link added.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Interview date – calendar card */}
+              <div className="rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Calendar className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    Interview
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {job.interview_at ? (
+                    <p className="text-sm font-medium text-foreground">
+                      {(() => {
+                        try {
+                          return new Date(job.interview_at).toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })
+                        } catch {
+                          return job.interview_at
+                        }
+                      })()}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No date set.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Stage – status pill card */}
+              <div className="rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Flag className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    Stage
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {job.stage?.trim() ? (
+                    <Badge variant="secondary" className="font-medium">
+                      {getStageLabel(job.stage)}
+                    </Badge>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Not set.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Accordion: only Meta, Extracted fields, Raw description */}
+          <Accordion type="single" collapsible defaultValue="meta" className="rounded-lg border border-border/60 bg-muted/10 text-sm">
+            <AccordionItem value="meta" className="border-b border-border/60 px-4 last:border-b-0">
               <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
                 Meta
               </AccordionTrigger>
@@ -569,7 +814,7 @@ export function JobPostingDetail() {
                 <JobPostingMetaCard job={job} />
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="entities" className="border-b px-4 last:border-b-0">
+            <AccordionItem value="entities" className="border-b border-border/60 px-4 last:border-b-0">
               <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
                 Extracted fields
               </AccordionTrigger>
@@ -577,102 +822,12 @@ export function JobPostingDetail() {
                 <JobPostingEntitiesCard entities={job.entities} />
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="raw" className="border-b px-4 last:border-b-0">
+            <AccordionItem value="raw" className="border-b border-border/60 px-4 last:border-b-0">
               <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
                 Raw job description
               </AccordionTrigger>
               <AccordionContent>
                 <JobPostingRawDescription rawText={job.raw_text} />
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="notes" className="border-b px-4 last:border-b-0">
-              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                Notes
-              </AccordionTrigger>
-              <AccordionContent>
-                <p className="whitespace-pre-wrap text-sm text-foreground">
-                  {job.notes?.trim() ?? "—"}
-                </p>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="questions" className="border-b px-4 last:border-b-0">
-              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                Questions to ask
-              </AccordionTrigger>
-              <AccordionContent>
-                <p className="whitespace-pre-wrap text-sm text-foreground">
-                  {job.questions_to_ask?.trim() ?? "—"}
-                </p>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="talking" className="border-b px-4 last:border-b-0">
-              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                Talking points
-              </AccordionTrigger>
-              <AccordionContent>
-                <p className="whitespace-pre-wrap text-sm text-foreground">
-                  {job.talking_points?.trim() ?? "—"}
-                </p>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="contact" className="border-b px-4 last:border-b-0">
-              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                Contact
-              </AccordionTrigger>
-              <AccordionContent>
-                <p className="text-sm text-foreground">
-                  {[job.contact_name, job.contact_email].filter(Boolean).join(" · ") || "—"}
-                </p>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="application-url" className="border-b px-4 last:border-b-0">
-              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                Application URL
-              </AccordionTrigger>
-              <AccordionContent>
-                {job.application_url?.trim() ? (
-                  <a
-                    href={job.application_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-primary underline-offset-4 hover:underline"
-                  >
-                    Open job ad
-                    <ExternalLink className="size-3.5" />
-                  </a>
-                ) : (
-                  <p className="text-sm text-muted-foreground">—</p>
-                )}
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="interview" className="border-b px-4 last:border-b-0">
-              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                Interview date
-              </AccordionTrigger>
-              <AccordionContent>
-                <p className="text-sm text-foreground">
-                  {job.interview_at
-                    ? (() => {
-                        try {
-                          return new Date(job.interview_at).toLocaleString()
-                        } catch {
-                          return job.interview_at
-                        }
-                      })()
-                    : "—"}
-                </p>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="stage" className="border-b px-4 last:border-b-0">
-              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                Stage
-              </AccordionTrigger>
-              <AccordionContent>
-                {job.stage?.trim() ? (
-                  <Badge variant="outline">{getStageLabel(job.stage)}</Badge>
-                ) : (
-                  <p className="text-sm text-muted-foreground">—</p>
-                )}
               </AccordionContent>
             </AccordionItem>
           </Accordion>

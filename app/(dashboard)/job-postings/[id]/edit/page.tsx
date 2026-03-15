@@ -99,27 +99,24 @@ export default function JobPostingEditPage() {
 
         {job && (
           <>
-            <div className="rounded-2xl border border-border/60 bg-muted/20 px-6 py-4">
-              <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-                <Pencil className="size-5 text-muted-foreground" />
+            <div className="rounded-xl border border-border/60 bg-muted/10 px-5 py-4">
+              <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+                <Pencil className="size-5 text-primary" />
                 Edit job posting
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Update the details below. Changes are saved when you click Save
-                changes.
+                Update the sections below. Save changes when you’re done.
               </p>
             </div>
 
-            <Card className="rounded-2xl border-border/60 p-6 md:p-8">
-              <JobPostingEditForm
-                job={job}
-                axiosAuth={axiosAuth}
-                onSave={handleSave}
-                onCancel={handleCancel}
-                showCancel={true}
-                idPrefix="edit-page"
-              />
-            </Card>
+            <JobPostingEditForm
+              job={job}
+              axiosAuth={axiosAuth}
+              onSave={handleSave}
+              onCancel={handleCancel}
+              showCancel={true}
+              idPrefix="edit-page"
+            />
           </>
         )}
       </div>

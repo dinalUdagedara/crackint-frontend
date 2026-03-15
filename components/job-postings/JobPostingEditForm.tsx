@@ -1,7 +1,20 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Loader2 } from "lucide-react"
+import {
+  Loader2,
+  Briefcase,
+  FileText,
+  HelpCircle,
+  MessageSquare,
+  User,
+  Calendar,
+  Link2,
+  Flag,
+  Image,
+  Plus,
+  X,
+} from "lucide-react"
 import type { AxiosInstance } from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +30,82 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { EntityTagInput } from "./EntityTagInput"
+
+/** Editable list of strings: one input per item, add/remove. Serializes to newline-separated string. */
+function ListFieldEditor({
+  value,
+  onChange,
+  addLabel,
+  itemPlaceholder,
+  idPrefix,
+}: {
+  value: string
+  onChange: (value: string) => void
+  addLabel: string
+  itemPlaceholder: string
+  idPrefix: string
+}) {
+  // Parse to array; "" gives [""] so we always have at least one row and "Add" works
+  const items = value.split("\n")
+
+  const setItems = (next: string[]) => {
+    onChange(next.join("\n"))
+  }
+
+  const add = () => {
+    setItems([...items, ""])
+  }
+
+  const update = (index: number, text: string) => {
+    const next = [...items]
+    next[index] = text
+    setItems(next)
+  }
+
+  const remove = (index: number) => {
+    const next = items.filter((_, i) => i !== index)
+    setItems(next)
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item, index) => (
+        <div key={index} className="flex gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/50 text-xs font-medium text-muted-foreground">
+            {index + 1}
+          </span>
+          <Input
+            id={index === 0 ? idPrefix : undefined}
+            value={item}
+            onChange={(e) => update(index, e.target.value)}
+            placeholder={itemPlaceholder}
+            className="min-w-0 flex-1"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={() => remove(index)}
+            aria-label="Remove"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full gap-2 border-dashed"
+        onClick={add}
+      >
+        <Plus className="size-4" />
+        {addLabel}
+      </Button>
+    </div>
+  )
+}
 
 export const STAGE_NONE = "__none__"
 export const STAGE_OPTIONS = [
@@ -121,12 +210,12 @@ export function JobPostingEditForm({
     setDeadline(
       job.deadline
         ? (() => {
-            try {
-              return new Date(job.deadline!).toISOString().slice(0, 16)
-            } catch {
-              return ""
-            }
-          })()
+          try {
+            return new Date(job.deadline!).toISOString().slice(0, 16)
+          } catch {
+            return ""
+          }
+        })()
         : ""
     )
     setCoverImageUrl(job.cover_image_url ?? "")
@@ -139,12 +228,12 @@ export function JobPostingEditForm({
     setInterviewAt(
       job.interview_at
         ? (() => {
-            try {
-              return new Date(job.interview_at!).toISOString().slice(0, 16)
-            } catch {
-              return ""
-            }
-          })()
+          try {
+            return new Date(job.interview_at!).toISOString().slice(0, 16)
+          } catch {
+            return ""
+          }
+        })()
         : ""
     )
     setStage(job.stage?.trim() ? job.stage! : STAGE_NONE)
@@ -231,11 +320,17 @@ export function JobPostingEditForm({
       )}
 
       <div className="grid gap-6">
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            Job details
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+        {/* Job details card */}
+        <div className="rounded-xl border border-border/60 bg-muted/10">
+          <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Briefcase className="size-4" />
+            </div>
+            <span className="text-sm font-medium text-foreground">
+              Job details
+            </span>
+          </div>
+          <div className="grid gap-4 p-4 sm:grid-cols-2">
             <div className="grid gap-2 sm:col-span-2">
               <Label htmlFor={`${idPrefix}-JOB_TITLE`}>Job title</Label>
               <Input
@@ -283,14 +378,16 @@ export function JobPostingEditForm({
               />
             </div>
           </div>
-        </section>
+        </div>
 
         {otherEntityEntries.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">
-              Other extracted fields
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-border/60 bg-muted/10">
+            <div className="border-b border-border/60 px-4 py-3">
+              <span className="text-sm font-medium text-foreground">
+                Other extracted fields
+              </span>
+            </div>
+            <div className="grid gap-4 p-4 sm:grid-cols-2">
               {otherEntityEntries.map(([key, values]) => (
                 <div key={key} className="grid gap-2">
                   <Label htmlFor={`${idPrefix}-${key}`}>
@@ -305,33 +402,50 @@ export function JobPostingEditForm({
                 </div>
               ))}
             </div>
-          </section>
+          </div>
         )}
 
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            Raw job description
-          </h2>
-          <div className="grid gap-2">
-            <Label htmlFor={`${idPrefix}-raw`}>Full description text</Label>
+        {/* Raw job description card */}
+        <div className="rounded-xl border border-border/60 bg-muted/10">
+          <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <FileText className="size-4" />
+            </div>
+            <span className="text-sm font-medium text-foreground">
+              Raw job description
+            </span>
+          </div>
+          <div className="p-4">
+            <Label htmlFor={`${idPrefix}-raw`} className="sr-only">
+              Full description text
+            </Label>
             <Textarea
               id={`${idPrefix}-raw`}
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               placeholder="Paste or edit the full job description..."
               rows={8}
-              className="resize-y min-h-32"
+              className="min-h-32 resize-y"
             />
           </div>
-        </section>
+        </div>
 
-        <section className="space-y-4 border-t border-border/60 pt-6">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            Prep &amp; links
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`${idPrefix}-cover`}>Cover image URL</Label>
+        {/* Prep & details – content-matched cards */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Cover image */}
+          <div className="rounded-xl border border-border/60 bg-muted/10">
+            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Image className="size-4" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                Cover image
+              </span>
+            </div>
+            <div className="p-4">
+              <Label htmlFor={`${idPrefix}-cover`} className="sr-only">
+                Cover image URL
+              </Label>
               <Input
                 id={`${idPrefix}-cover`}
                 type="url"
@@ -340,66 +454,130 @@ export function JobPostingEditForm({
                 placeholder="https://..."
               />
             </div>
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`${idPrefix}-notes`}>Notes</Label>
+          </div>
+
+          {/* Notes */}
+          <div className="rounded-xl border border-border/60 bg-muted/10 sm:col-span-2 lg:col-span-3">
+            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <FileText className="size-4" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                Notes
+              </span>
+            </div>
+            <div className="p-4">
+              <Label htmlFor={`${idPrefix}-notes`} className="sr-only">
+                Notes
+              </Label>
               <Textarea
                 id={`${idPrefix}-notes`}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Key requirements, follow-up dates..."
-                rows={3}
+                rows={4}
                 className="resize-none"
               />
             </div>
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`${idPrefix}-questions`}>
+          </div>
+
+          {/* Questions to ask */}
+          <div className="rounded-xl border border-border/60 bg-muted/10 sm:col-span-2">
+            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <HelpCircle className="size-4" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                Questions to ask
+              </span>
+            </div>
+            <div className="p-4">
+              <Label id={`${idPrefix}-questions-label`} className="sr-only">
                 Questions to ask
               </Label>
-              <Textarea
-                id={`${idPrefix}-questions`}
+              <ListFieldEditor
+                idPrefix={`${idPrefix}-questions`}
                 value={questionsToAsk}
-                onChange={(e) => setQuestionsToAsk(e.target.value)}
-                placeholder="Questions for the interviewer..."
-                rows={3}
-                className="resize-none"
+                onChange={setQuestionsToAsk}
+                addLabel="Add question"
+                itemPlaceholder="e.g. What does success look like in this role?"
               />
             </div>
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`${idPrefix}-talking`}>Talking points</Label>
-              <Textarea
-                id={`${idPrefix}-talking`}
+          </div>
+
+          {/* Talking points */}
+          <div className="rounded-xl border border-border/60 bg-muted/10">
+            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <MessageSquare className="size-4" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                Talking points
+              </span>
+            </div>
+            <div className="p-4">
+              <Label id={`${idPrefix}-talking-label`} className="sr-only">
+                Talking points
+              </Label>
+              <ListFieldEditor
+                idPrefix={`${idPrefix}-talking`}
                 value={talkingPoints}
-                onChange={(e) => setTalkingPoints(e.target.value)}
-                placeholder="Key points to mention..."
-                rows={3}
-                className="resize-none"
+                onChange={setTalkingPoints}
+                addLabel="Add talking point"
+                itemPlaceholder="e.g. Highlight relevant project experience"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor={`${idPrefix}-contact-name`}>
-                Contact name
-              </Label>
-              <Input
-                id={`${idPrefix}-contact-name`}
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                placeholder="Recruiter or contact name"
-              />
+          </div>
+
+          {/* Contact */}
+          <div className="rounded-xl border border-border/60 bg-muted/10">
+            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <User className="size-4" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                Contact
+              </span>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor={`${idPrefix}-contact-email`}>
-                Contact email
-              </Label>
-              <Input
-                id={`${idPrefix}-contact-email`}
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="contact@company.com"
-              />
+            <div className="grid  gap-4 p-4">
+              <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-contact-name`}>
+                  Name
+                </Label>
+                <Input
+                  id={`${idPrefix}-contact-name`}
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Recruiter or contact name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-contact-email`}>
+                  Email
+                </Label>
+                <Input
+                  id={`${idPrefix}-contact-email`}
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="contact@company.com"
+                />
+              </div>
             </div>
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`${idPrefix}-application-url`}>
+          </div>
+
+          {/* Application URL */}
+          <div className="rounded-xl border border-border/60 bg-muted/10">
+            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Link2 className="size-4" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                Job ad link
+              </span>
+            </div>
+            <div className="p-4">
+              <Label htmlFor={`${idPrefix}-application-url`} className="sr-only">
                 Application URL
               </Label>
               <Input
@@ -410,8 +588,20 @@ export function JobPostingEditForm({
                 placeholder="https://..."
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor={`${idPrefix}-interview-at`}>
+          </div>
+
+          {/* Interview date */}
+          <div className="rounded-xl border border-border/60 bg-muted/10">
+            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Calendar className="size-4" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                Interview date
+              </span>
+            </div>
+            <div className="p-4">
+              <Label htmlFor={`${idPrefix}-interview-at`} className="sr-only">
                 Interview date &amp; time
               </Label>
               <Input
@@ -421,8 +611,22 @@ export function JobPostingEditForm({
                 onChange={(e) => setInterviewAt(e.target.value)}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor={`${idPrefix}-stage`}>Stage</Label>
+          </div>
+
+          {/* Stage */}
+          <div className="rounded-xl border border-border/60 bg-muted/10">
+            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Flag className="size-4" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                Stage
+              </span>
+            </div>
+            <div className="p-4">
+              <Label htmlFor={`${idPrefix}-stage`} className="sr-only">
+                Stage
+              </Label>
               <Select value={stage || STAGE_NONE} onValueChange={setStage}>
                 <SelectTrigger id={`${idPrefix}-stage`} className="w-full">
                   <SelectValue placeholder="Select stage" />
@@ -437,7 +641,7 @@ export function JobPostingEditForm({
               </Select>
             </div>
           </div>
-        </section>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-6">

@@ -21,7 +21,7 @@ const iconMap = {
 }
 
 const MAX_ITEMS_PER_CARD = 3
-const MAX_TITLE_LENGTH = 72
+const MAX_TITLE_LENGTH = 35
 
 type SummaryCardProps = {
   summary: Summary
@@ -36,19 +36,19 @@ const EMPTY_STATE_CONFIG: Record<
   jump_back_in: {
     title: "No sessions yet",
     description: "Start your first practice above to begin the journey.",
-    actionLabel: "Start practice",
+    actionLabel: "New Session",
     href: "/sessions",
   },
   refine_cv: {
     title: "No CV suggestions yet",
     description: "Upload your CV and add a job to get tailored suggestions.",
-    actionLabel: "Go to CV",
+    actionLabel: "Go to CV's",
     href: "/resumes",
   },
   readiness_tracker: {
     title: "No readiness data yet",
     description: "Start a practice session to see your readiness here.",
-    actionLabel: "Start practice",
+    actionLabel: "Keep Going",
     href: "/sessions",
   },
 }
@@ -117,7 +117,7 @@ export default function SummaryCard({
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="line-clamp-2 wrap-break-word cursor-default">
+          <span className="line-clamp-1 wrap-break-word cursor-default">
             {title}
           </span>
         </TooltipTrigger>
@@ -173,11 +173,10 @@ export default function SummaryCard({
               </li>
             ))}
           </ul>
-          {ctaItems.length > 0 && (
-            <Button asChild size="sm" variant="outline" className="mt-1 shrink-0 w-full">
-              <Link href={ctaHref}>{emptyConfig.actionLabel}</Link>
-            </Button>
-          )}
+
+          <Button asChild size="sm" variant="outline" className="mt-1 shrink-0 w-full">
+            <Link href={ctaHref}>{emptyConfig.actionLabel}</Link>
+          </Button>
         </div>
       )}
     </Card>

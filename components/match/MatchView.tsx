@@ -190,14 +190,6 @@ export function MatchView() {
 
   return (
     <div className="space-y-8">
-      {/* Back */}
-      <Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground hover:text-foreground">
-        <Link href="/" className="gap-2">
-          <ArrowLeft className="size-4" />
-          Back
-        </Link>
-      </Button>
-
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-muted/40 via-muted/20 to-transparent p-6 shadow-sm md:p-8">
         <div className="relative flex items-start gap-4">

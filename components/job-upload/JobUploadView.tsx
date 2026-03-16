@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { ExtractedJobEntitiesCard } from "./ExtractedJobEntitiesCard"
+import { EditJobEntitiesDialog } from "./EditJobEntitiesDialog"
 
 export default function JobUploadView({ userId: _userId }: { userId?: string | null }) {
   const axiosAuth = useAxiosAuth()
@@ -39,6 +40,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
   const [result, setResult] = useState<JobExtractPayload | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   const performExtraction = useCallback(
     async (
@@ -106,7 +108,8 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
     try {
       const location =
         result.entities?.LOCATION?.[0] ??
-        result.entities?.CITY?.[0] ??
+        // Fallback if extractor uses CITY instead of LOCATION
+        (result as any).entities?.CITY?.[0] ??
         null
 
       const response = await createJobPosting(axiosAuth, {
@@ -179,13 +182,14 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                 <CardHeader className="pb-4">
                   <CardTitle className="text-base">Extracted information</CardTitle>
                   <CardDescription>
-                    Review the data we extracted from the job poster, or replace it with a new file.
+                    Review and edit the data we extracted from the job poster, or replace it with a new file.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ExtractedJobEntitiesCard
                     payload={result!}
                     onReplace={handleReplaceJobPoster}
+                    onEdit={() => setShowEditDialog(true)}
                   />
                 </CardContent>
               </Card>
@@ -225,6 +229,18 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                   </div>
                 </CardContent>
               </Card>
+
+              {result && (
+                <EditJobEntitiesDialog
+                  axiosAuth={axiosAuth}
+                  extracted={result}
+                  open={showEditDialog}
+                  onOpenChange={setShowEditDialog}
+                  onSaveLocal={(updated) => {
+                    setResult(updated)
+                  }}
+                />
+              )}
 
               <Card className="rounded-2xl border-border/60 shadow-sm">
                 <CardHeader className="pb-4">

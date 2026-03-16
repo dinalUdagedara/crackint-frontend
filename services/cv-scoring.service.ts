@@ -27,10 +27,12 @@ function throwOnAxiosError(e: unknown): never {
   throw e
 }
 
-/** Score a CV from file upload (PDF or image). Backend passes to LLM vision. */
+/** Score a CV from file upload (PDF or image). Backend passes to LLM vision.
+ * If resumeId is provided and the resume is owned by the user, the score is saved on that resume. */
 export async function scoreResumeFromFile(
   axiosAuth: AxiosInstance,
-  file: File
+  file: File,
+  resumeId?: string
 ): Promise<ApiResponse<CVScorePayload>> {
   const isSupported =
     file.type === "application/pdf" || file.type.startsWith("image/")
@@ -41,9 +43,12 @@ export async function scoreResumeFromFile(
   }
   const formData = new FormData()
   formData.append("file", file)
+  const url = resumeId
+    ? `/resumes/score?resume_id=${encodeURIComponent(resumeId)}`
+    : "/resumes/score"
   try {
     const { data } = await axiosAuth.post<ApiResponse<CVScorePayload>>(
-      "/resumes/score",
+      url,
       formData,
       { headers: { "Content-Type": undefined } }
     )
@@ -53,15 +58,25 @@ export async function scoreResumeFromFile(
   }
 }
 
-/** Score an existing resume using stored raw text. Requires resume to have raw_text. */
+/** Options for getResumeScore. */
+export interface GetResumeScoreOptions {
+  /** If true, backend re-runs the LLM and overwrites the stored score. */
+  force?: boolean
+}
+
+/** Score an existing resume using stored raw text. Requires resume to have raw_text.
+ * By default returns cached score if present; pass force: true to re-run the LLM and re-score. */
 export async function getResumeScore(
   axiosAuth: AxiosInstance,
-  resumeId: string
+  resumeId: string,
+  options?: GetResumeScoreOptions
 ): Promise<ApiResponse<CVScorePayload>> {
   try {
-    const { data } = await axiosAuth.get<ApiResponse<CVScorePayload>>(
-      `/resumes/${resumeId}/score`
-    )
+    const params = new URLSearchParams()
+    if (options?.force) params.set("force", "true")
+    const qs = params.toString()
+    const url = `/resumes/${resumeId}/score${qs ? `?${qs}` : ""}`
+    const { data } = await axiosAuth.get<ApiResponse<CVScorePayload>>(url)
     return data
   } catch (e) {
     return throwOnAxiosError(e)

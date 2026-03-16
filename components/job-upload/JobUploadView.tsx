@@ -1,8 +1,9 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileUp, FileText, Loader2 } from "lucide-react"
+import { ArrowRight, FileUp, FileText, Loader2, AlertCircle, ClipboardList } from "lucide-react"
 import { AIExtractionLoader } from "@/components/cv-upload/AIExtractionLoader"
 import CVFileDropZone from "@/components/cv-upload/CVFileDropZone"
 import CVPasteArea from "@/components/cv-upload/CVPasteArea"
@@ -17,6 +18,14 @@ import { createJobPosting } from "@/services/job-postings.service"
 import type { JobExtractPayload } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
 import { ExtractedJobEntitiesCard } from "./ExtractedJobEntitiesCard"
 
 export default function JobUploadView({ userId: _userId }: { userId?: string | null }) {
@@ -124,136 +133,287 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 overflow-auto p-4">
-        <div className="mx-auto flex max-w-2xl flex-col gap-8">
-          <section className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">
-              Upload job poster
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Upload a PDF or image of the job poster, or paste the job
-              description text. We&apos;ll extract key information for interview
-              prep.
-            </p>
-          </section>
+      <div className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="mx-auto flex max-w-2xl flex-col gap-6">
+          {/* Hero */}
+          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-muted/40 via-muted/20 to-transparent p-6 shadow-sm md:p-8">
+            <div className="relative flex items-start gap-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ClipboardList className="size-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl font-semibold tracking-tight">
+                  Upload job poster
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Upload a PDF or image of the job poster, or paste the job
+                  description text. We&apos;ll extract key information for interview prep.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {error && (
             <div
               role="alert"
-              className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              className="flex items-start gap-3 rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
             >
-              {error}
+              <AlertCircle className="size-5 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {saveError && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+              <AlertCircle className="size-5 shrink-0 mt-0.5" />
+              <span>{saveError}</span>
             </div>
           )}
 
           {hasExtractedResult ? (
             <>
-              <ExtractedJobEntitiesCard
-                payload={result!}
-                onReplace={handleReplaceJobPoster}
-              />
-            {saveError && (
-              <div
-                role="alert"
-                className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-              >
-                {saveError}
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={handleSaveJobPosting}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Saving job posting...
-                  </>
-                ) : (
-                  "Save as job posting"
-                )}
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                This will create a stored job posting that you can reuse in prep sessions.
-              </p>
-            </div>
-              <section className="rounded-lg border border-dashed bg-muted/20 p-6">
-                <h2 className="mb-2 text-sm font-medium text-foreground">
-                  Replace job poster
-                </h2>
-                <p className="mb-4 text-xs text-muted-foreground">
-                  Upload a new file or paste different job description text to
-                  re-extract.
-                </p>
-                <div
-                  className={cn(
-                    "relative space-y-4",
-                    isLoading && "pointer-events-none opacity-60"
-                  )}
-                >
-                  <Tabs defaultValue="upload" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="upload">
-                        <FileUp className="size-4" />
-                        Upload file
-                      </TabsTrigger>
-                      <TabsTrigger value="paste">
-                        <FileText className="size-4" />
-                        Paste text
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="upload" className="mt-4">
-                      <CVFileDropZone
-                        variant="job"
-                        onFileSelect={handleFileSelect}
-                      />
-                    </TabsContent>
-                    <TabsContent value="paste" className="mt-4">
-                      <CVPasteArea
-                        id="job-paste-replace"
-                        label="Or paste job description text"
-                        value={pasteText}
-                        onChange={(value) => {
-                          setPasteText(value)
-                          setError(null)
-                        }}
-                        placeholder="Paste new job description text to replace..."
-                      />
-                    </TabsContent>
-                  </Tabs>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={useValidation}
-                      onChange={(e) =>
-                        setUseValidation(e.target.checked)
-                      }
-                      className="size-4 rounded border-input"
-                    />
-                    <span className="text-sm">
-                      Use AI validation (more accurate, slower)
-                    </span>
-                  </label>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    AI validation may improve completeness; if unavailable,
-                    standard extraction is used automatically.
-                  </p>
-                  <Button
-                    onClick={handleExtractClick}
-                    disabled={isLoading || !canExtract}
-                    variant="outline"
-                    size="sm"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin" />
-                        {useValidation ? "Validating with AI..." : "Extracting..."}
-                      </>
-                    ) : (
-                      "Extract"
+              <Card className="rounded-2xl border-border/60 shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base">Extracted information</CardTitle>
+                  <CardDescription>
+                    Review the data we extracted from the job poster, or replace it with a new file.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ExtractedJobEntitiesCard
+                    payload={result!}
+                    onReplace={handleReplaceJobPoster}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl border-border/60 shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base">What&apos;s next?</CardTitle>
+                  <CardDescription>
+                    Save this job posting to use it in prep sessions, start interview prep, or go back to the dashboard.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      onClick={handleSaveJobPosting}
+                      disabled={isSaving}
+                      className="rounded-xl"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          Saving job posting...
+                        </>
+                      ) : (
+                        "Save as job posting"
+                      )}
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="rounded-xl">
+                      <Link href="/sessions">
+                        Start interview prep
+                        <ArrowRight className="ml-2 size-4" />
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="rounded-xl">
+                      <Link href="/">Back to dashboard</Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl border-border/60 shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base">Replace job poster</CardTitle>
+                  <CardDescription>
+                    Upload a new file or paste different job description text to re-extract.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative">
+                    <div
+                      className={cn(
+                        "space-y-5",
+                        isLoading && "pointer-events-none opacity-60"
+                      )}
+                    >
+                      <Tabs defaultValue="upload" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 rounded-xl bg-muted/50 p-1">
+                          <TabsTrigger
+                            value="upload"
+                            className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                          >
+                            <FileUp className="size-4 hidden sm:block" />
+                            Upload file
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="paste"
+                            className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                          >
+                            <FileText className="size-4 hidden sm:block" />
+                            Paste text
+                          </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="upload" className="mt-5 space-y-1.5">
+                          <Label className="text-sm font-medium">New job poster file</Label>
+                          <CVFileDropZone
+                            variant="job"
+                            onFileSelect={handleFileSelect}
+                          />
+                        </TabsContent>
+                        <TabsContent value="paste" className="mt-5 space-y-1.5">
+                          <Label className="text-sm font-medium">Paste new job description</Label>
+                          <CVPasteArea
+                            id="job-paste-replace"
+                            label=""
+                            value={pasteText}
+                            onChange={(value) => {
+                              setPasteText(value)
+                              setError(null)
+                            }}
+                            placeholder="Paste new job description text to replace..."
+                          />
+                        </TabsContent>
+                      </Tabs>
+                      <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-2">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={useValidation}
+                            onChange={(e) =>
+                              setUseValidation(e.target.checked)
+                            }
+                            className="size-4 rounded border-input"
+                          />
+                          <span className="text-sm font-medium">Use AI validation (more accurate, slower)</span>
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                          AI validation may improve completeness; if unavailable,
+                          standard extraction is used automatically.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleExtractClick}
+                        disabled={isLoading || !canExtract}
+                        variant="outline"
+                        className="w-full rounded-xl md:w-auto md:min-w-[140px]"
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin" />
+                            {useValidation ? "Validating..." : "Extracting..."}
+                          </>
+                        ) : (
+                          "Extract"
+                        )}
+                      </Button>
+                    </div>
+                    {isLoading && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
+                        <AIExtractionLoader
+                          message={
+                            useValidation
+                              ? "Extracting and validating with AI"
+                              : "Analyzing job description"
+                          }
+                        />
+                      </div>
                     )}
-                  </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card className="rounded-2xl border-border/60 shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">How would you like to add your job poster?</CardTitle>
+                <CardDescription>
+                  Upload a PDF or image, or paste the job description text. We&apos;ll extract key information for interview prep.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="relative">
+                  <div
+                    className={cn(
+                      "space-y-5",
+                      isLoading && "pointer-events-none opacity-60"
+                    )}
+                  >
+                    <Tabs defaultValue="upload" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 rounded-xl bg-muted/50 p-1">
+                        <TabsTrigger
+                          value="upload"
+                          className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                        >
+                          <FileUp className="size-4 hidden sm:block" />
+                          Upload file
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="paste"
+                          className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                        >
+                          <FileText className="size-4 hidden sm:block" />
+                          Paste text
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="upload" className="mt-5 space-y-1.5">
+                        <Label className="text-sm font-medium">Upload your job poster</Label>
+                        <CVFileDropZone
+                          variant="job"
+                          onFileSelect={handleFileSelect}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          PDF or images (PNG, JPEG, WebP) up to 5 MB.
+                        </p>
+                      </TabsContent>
+                      <TabsContent value="paste" className="mt-5 space-y-1.5">
+                        <Label className="text-sm font-medium">Paste job description text</Label>
+                        <CVPasteArea
+                          id="job-paste"
+                          label=""
+                          value={pasteText}
+                          onChange={(value) => {
+                            setPasteText(value)
+                            setError(null)
+                          }}
+                          placeholder="Paste job description text here..."
+                        />
+                      </TabsContent>
+                    </Tabs>
+                    <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-2">
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={useValidation}
+                          onChange={(e) => setUseValidation(e.target.checked)}
+                          className="size-4 rounded border-input"
+                        />
+                        <span className="text-sm font-medium">Use AI validation (more accurate, slower)</span>
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        AI validation may improve completeness; if unavailable,
+                        standard extraction is used automatically.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleExtractClick}
+                      disabled={isLoading || !canExtract}
+                      className="w-full rounded-xl md:w-auto md:min-w-[180px]"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          {useValidation ? "Validating..." : "Extracting..."}
+                        </>
+                      ) : (
+                        "Extract"
+                      )}
+                    </Button>
+                  </div>
                   {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
                       <AIExtractionLoader
@@ -266,91 +426,8 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                     </div>
                   )}
                 </div>
-              </section>
-            </>
-          ) : (
-            <section className="relative">
-              <div
-                className={cn(
-                  "space-y-4",
-                  isLoading && "pointer-events-none opacity-60"
-                )}
-              >
-                <Tabs defaultValue="upload" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="upload">
-                      <FileUp className="size-4" />
-                      Upload file
-                    </TabsTrigger>
-                    <TabsTrigger value="paste">
-                      <FileText className="size-4" />
-                      Paste text
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="upload" className="mt-4">
-                    <CVFileDropZone
-                      variant="job"
-                      onFileSelect={handleFileSelect}
-                    />
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      PDF or images (PNG, JPEG, WebP) up to 5 MB.
-                    </p>
-                  </TabsContent>
-                  <TabsContent value="paste" className="mt-4">
-                    <CVPasteArea
-                      id="job-paste"
-                      label="Or paste job description text"
-                      value={pasteText}
-                      onChange={(value) => {
-                        setPasteText(value)
-                        setError(null)
-                      }}
-                      placeholder="Paste job description text here..."
-                    />
-                  </TabsContent>
-                </Tabs>
-                <label className="mt-4 flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={useValidation}
-                    onChange={(e) => setUseValidation(e.target.checked)}
-                    className="size-4 rounded border-input"
-                  />
-                  <span className="text-sm">
-                    Use AI validation (more accurate, slower)
-                  </span>
-                </label>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  AI validation may improve completeness; if unavailable,
-                  standard extraction is used automatically.
-                </p>
-                <Button
-                  onClick={handleExtractClick}
-                  disabled={isLoading || !canExtract}
-                  className="mt-4"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      {useValidation ? "Validating with AI..." : "Extracting..."}
-                    </>
-                  ) : (
-                    "Extract"
-                  )}
-                </Button>
-              </div>
-              {isLoading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
-                  <AIExtractionLoader
-                    message={
-                      useValidation
-                        ? "Extracting and validating with AI"
-                        : "Analyzing job description"
-                    }
-                  />
-                </div>
-              )}
-            </section>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>

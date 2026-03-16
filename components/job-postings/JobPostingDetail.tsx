@@ -1,14 +1,32 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft, AlertTriangle, Pencil, Trash2 } from "lucide-react"
+import {
+  Loader2,
+  ArrowLeft,
+  ChevronDown,
+  ExternalLink,
+  Plus,
+  FileText,
+  HelpCircle,
+  MessageSquare,
+  User,
+  Calendar,
+  Link2,
+  Flag,
+} from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getJobPosting, deleteJobPosting } from "@/services/job-postings.service"
-import { EditJobPostingDialog } from "./EditJobPostingDialog"
+import { listSessions } from "@/services/sessions.service"
 import { listResumes } from "@/services/resume-uploader.service"
-import { getSkillGap, MatchError } from "@/services/match.service"
+import {
+  getStoredSkillGap,
+  runSkillGapAnalysis,
+  MatchError,
+} from "@/services/match.service"
 import {
   deleteCoverLetter,
   generateCoverLetter,
@@ -19,6 +37,7 @@ import { getReadiness } from "@/services/readiness.service"
 import type {
   CoverLetter,
   JobPosting,
+  PrepSession,
   Resume,
   SkillGapPayload,
   ReadinessPayload,
@@ -26,15 +45,6 @@ import type {
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useQuery } from "@tanstack/react-query"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,14 +55,71 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { JobPostingDetailHeader } from "./JobPostingDetailHeader"
+import { JobPostingMetaCard } from "./JobPostingMetaCard"
+import { JobPostingEntitiesCard } from "./JobPostingEntitiesCard"
+import { JobPostingSkillGapSection } from "./JobPostingSkillGapSection"
+import { JobPostingReadinessSection } from "./JobPostingReadinessSection"
+import { JobPostingCoverLetterSection } from "./JobPostingCoverLetterSection"
+import { JobPostingRawDescription } from "./JobPostingRawDescription"
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "-"
+const COVER_GRADIENTS = [
+  "bg-linear-to-br from-primary/40 via-primary/20 to-muted/50",
+  "bg-linear-to-br from-primary/30 to-muted/60",
+  "bg-linear-to-br from-muted/50 via-primary/20 to-primary/40",
+  "bg-linear-to-br from-primary/25 to-muted/40",
+  "bg-linear-to-br from-muted/40 to-primary/30",
+]
+
+function getCoverGradient(jobId: string): string {
+  let n = 0
+  for (let i = 0; i < jobId.length; i++) n += jobId.charCodeAt(i)
+  return COVER_GRADIENTS[Math.abs(n) % COVER_GRADIENTS.length] ?? COVER_GRADIENTS[0]
+}
+
+function getInitial(job: JobPosting): string {
+  const company = job.entities?.COMPANY?.[0]
+  if (company?.length) return company.slice(0, 1).toUpperCase()
+  const title = job.entities?.JOB_TITLE?.[0]
+  if (title?.length) return title.slice(0, 1).toUpperCase()
+  return "J"
+}
+
+function formatSessionLabel(session: PrepSession): string {
+  const summary = session.summary as { title?: string } | null
+  const title = summary?.title && typeof summary.title === "string" ? summary.title.trim() : null
+  if (title) return title
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(session.created_at).toLocaleDateString()
   } catch {
-    return iso
+    return "Session"
   }
+}
+
+const STAGE_LABELS: Record<string, string> = {
+  saved: "Saved",
+  preparing: "Preparing",
+  applied: "Applied",
+  interview: "Interview",
+  offer: "Offer",
+}
+
+function getStageLabel(stage: string | null | undefined): string {
+  if (!stage) return "—"
+  return STAGE_LABELS[stage.toLowerCase()] ?? stage
 }
 
 export function JobPostingDetail() {
@@ -68,8 +135,8 @@ export function JobPostingDetail() {
   const [selectedResumeId, setSelectedResumeId] = useState<string>("")
   const [skillGapResult, setSkillGapResult] = useState<SkillGapPayload | null>(null)
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
+  const [isSkillGapLoading, setIsSkillGapLoading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [coverLetter, setCoverLetter] = useState<CoverLetter | null>(null)
@@ -92,12 +159,17 @@ export function JobPostingDetail() {
     enabled: sessionStatus === "authenticated",
   })
 
-  const resumes = (resumesQuery.data ?? []) as Resume[]
+  const sessionsForJobQuery = useQuery({
+    queryKey: ["sessions", "list", "job", id],
+    queryFn: async () => {
+      const res = await listSessions(axiosAuth, 1, 20, id ?? undefined)
+      return (res.payload ?? []) as PrepSession[]
+    },
+    enabled: sessionStatus === "authenticated" && !!id,
+  })
 
-  const selectedResume = useMemo(
-    () => resumes.find((r) => r.id === selectedResumeId) ?? null,
-    [resumes, selectedResumeId]
-  )
+  const resumes = (resumesQuery.data ?? []) as Resume[]
+  const sessionsForJob = (sessionsForJobQuery.data ?? []) as PrepSession[]
 
   useEffect(() => {
     if (!job || !selectedResumeId) {
@@ -143,13 +215,75 @@ export function JobPostingDetail() {
     }
   }, [axiosAuth, job, selectedResumeId])
 
+  useEffect(() => {
+    if (!id || !job || !selectedResumeId) {
+      setSkillGapResult(null)
+      setSkillGapError(null)
+      setIsSkillGapLoading(false)
+      return
+    }
+
+    let isMounted = true
+    async function fetchStoredSkillGap() {
+      setIsSkillGapLoading(true)
+      setSkillGapError(null)
+      setSkillGapResult(null)
+      try {
+        const res = await getStoredSkillGap(axiosAuth, selectedResumeId, id)
+        if (!isMounted) return
+        if (res.success && res.payload) {
+          setSkillGapResult(res.payload)
+        }
+      } catch (err) {
+        if (!isMounted) return
+        if (err instanceof MatchError && err.status === 404) {
+          setSkillGapError(null)
+          setSkillGapResult(null)
+          try {
+            const postRes = await runSkillGapAnalysis(
+              axiosAuth,
+              selectedResumeId,
+              id,
+              { use_llm: true }
+            )
+            if (!isMounted) return
+            if (postRes.success && postRes.payload) {
+              setSkillGapResult(postRes.payload)
+            }
+          } catch (postErr) {
+            if (!isMounted) return
+            setSkillGapError(
+              postErr instanceof MatchError
+                ? postErr.message
+                : "Failed to analyze match."
+            )
+          }
+        } else {
+          setSkillGapError(
+            err instanceof MatchError ? err.message : "Failed to load analysis."
+          )
+        }
+      } finally {
+        if (isMounted) setIsSkillGapLoading(false)
+      }
+    }
+
+    void fetchStoredSkillGap()
+
+    return () => {
+      isMounted = false
+    }
+  }, [axiosAuth, id, job, selectedResumeId])
+
   async function handleAnalyzeSkillGap() {
     if (!id || !selectedResumeId || isAnalyzing) return
     setIsAnalyzing(true)
     setSkillGapError(null)
     setSkillGapResult(null)
     try {
-      const res = await getSkillGap(axiosAuth, selectedResumeId, id)
+      const res = await runSkillGapAnalysis(axiosAuth, selectedResumeId, id, {
+        use_llm: true,
+      })
       if (res.success && res.payload) {
         setSkillGapResult(res.payload)
       }
@@ -340,390 +474,363 @@ export function JobPostingDetail() {
 
       {!isLoading && !error && job && (
         <div className="space-y-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-bold tracking-tight">
-                {job.entities?.JOB_TITLE?.[0] ?? "Job posting"}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {job.entities?.COMPANY?.[0] ?? "Unknown company"} •{" "}
-                {job.location ?? job.entities?.LOCATION?.[0] ?? "Location unknown"}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowEditDialog(true)}
-              >
-                <Pencil className="mr-2 size-4" />
-                Edit
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={isDeleting}
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-4 text-sm md:grid-cols-2">
-            <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Meta
-              </h2>
-              <dl className="space-y-1.5">
-                <div className="flex gap-2">
-                  <dt className="w-28 text-xs text-muted-foreground">
-                    Job ID
-                  </dt>
-                  <dd className="font-mono text-xs text-foreground">
-                    {job.id}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-28 text-xs text-muted-foreground">
-                    Created
-                  </dt>
-                  <dd className="text-foreground">
-                    {formatDate(job.created_at)}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-28 text-xs text-muted-foreground">
-                    Updated
-                  </dt>
-                  <dd className="text-foreground">
-                    {formatDate(job.updated_at)}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-28 text-xs text-muted-foreground">
-                    Deadline
-                  </dt>
-                  <dd className="text-foreground">
-                    {formatDate(job.deadline)}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Extracted fields
-              </h2>
-              <div className="space-y-1.5">
-                {Object.entries(job.entities ?? {}).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No structured entities stored for this job.
-                  </p>
-                ) : (
-                  Object.entries(job.entities).map(([key, values]) => (
-                    <div key={key} className="space-y-1">
-                      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {key.replace(/_/g, " ")}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {values.map((v) => (
-                          <span
-                            key={v}
-                            className="inline-flex rounded-md border bg-background px-2.5 py-1 text-xs text-foreground"
-                          >
-                            {v}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-            <h2 className="text-sm font-medium">Check match with my CV</h2>
-            <p className="text-xs text-muted-foreground">
-              Compare your resume with this job posting to see missing skills and
-              suggestions.
-            </p>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[200px] space-y-1.5">
-                <Label htmlFor="skill-gap-resume">Resume</Label>
-                <Select
-                  value={selectedResumeId}
-                  onValueChange={(v) => {
-                    setSelectedResumeId(v)
-                    setSkillGapError(null)
-                    setSkillGapResult(null)
-                  }}
-                  disabled={resumesQuery.isPending}
-                >
-                  <SelectTrigger id="skill-gap-resume">
-                    <SelectValue
-                      placeholder={
-                        resumesQuery.isPending
-                          ? "Loading..."
-                          : resumes.length
-                            ? "Select a resume"
-                            : "No resumes available"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {resumes.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.entities?.NAME?.[0] ?? r.id.slice(0, 8) + "..."}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                onClick={handleAnalyzeSkillGap}
-                disabled={!selectedResumeId || isAnalyzing}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  "Analyze"
-                )}
-              </Button>
-            </div>
-            {skillGapError && (
-              <div
-                role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-              >
-                {skillGapError}
-              </div>
-            )}
-            {skillGapResult && (
-              <div className="space-y-3 pt-2">
-                {skillGapResult.alerts.length > 0 && (
-                  <div className="space-y-2">
-                    {skillGapResult.alerts.map((a, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-start gap-2 rounded-md px-3 py-2 text-sm ${a.severity === "high"
-                            ? "border border-destructive/50 bg-destructive/10 text-destructive"
-                            : a.severity === "medium"
-                              ? "border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                              : "border border-muted bg-muted/30 text-muted-foreground"
-                          }`}
-                      >
-                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                        {a.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {skillGapResult.missing_skills.length > 0 && (
-                  <div>
-                    <h3 className="mb-1.5 text-xs font-medium text-muted-foreground">
-                      Missing skills
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {skillGapResult.missing_skills.map((s) => (
-                        <span
-                          key={s}
-                          className="inline-flex rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs text-destructive"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {skillGapResult.suggestions.length > 0 && (
-                  <div>
-                    <h3 className="mb-1.5 text-xs font-medium text-muted-foreground">
-                      Suggestions
-                    </h3>
-                    <ul className="list-inside list-disc space-y-0.5 text-sm text-muted-foreground">
-                      {skillGapResult.suggestions.map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-medium">Role-specific readiness</h2>
-                <p className="text-xs text-muted-foreground">
-                  Combined readiness score for this job and selected CV (CV match, past
-                  sessions, and gaps).
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleFetchRoleReadiness}
-                disabled={!selectedResumeId || isRoleReadinessLoading}
-              >
-                {isRoleReadinessLoading ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  "Check readiness"
-                )}
-              </Button>
-            </div>
-            {roleReadinessError && (
-              <div
-                role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-              >
-                {roleReadinessError}
-              </div>
-            )}
-            {roleReadiness && (
-              <div className="flex flex-wrap items-center gap-4 text-xs">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Readiness
-                  </span>
-                  <span className="text-sm font-semibold">
-                    {Math.round(roleReadiness.combined_score)} / 100
-                  </span>
-                </div>
-                {roleReadiness.cv_score !== null && (
-                  <span className="rounded-full bg-muted px-2.5 py-1">
-                    CV {Math.round(roleReadiness.cv_score)} / 100
-                  </span>
-                )}
-                {roleReadiness.session_avg !== null && (
-                  <span className="rounded-full bg-muted px-2.5 py-1">
-                    Sessions avg {Math.round(roleReadiness.session_avg)} / 100
-                  </span>
-                )}
-                {roleReadiness.gap_severity && (
-                  <span className="rounded-full bg-muted px-2.5 py-1">
-                    Gap: {roleReadiness.gap_severity}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-            <h2 className="text-sm font-medium">Generate cover letter</h2>
-            <p className="text-xs text-muted-foreground">
-              Use your selected resume and this job posting to generate a tailored cover letter.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={handleGenerateCoverLetter}
-                disabled={!selectedResumeId || isGeneratingCoverLetter}
-              >
-                {isGeneratingCoverLetter ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  "Generate cover letter"
-                )}
-              </Button>
-              {!selectedResumeId && (
-                <p className="text-xs text-muted-foreground">
-                  Select a resume above to enable cover letter generation.
-                </p>
-              )}
-            </div>
-            {coverLetter && (
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSaveCoverLetter}
-                  disabled={isSavingCoverLetter || !coverLetterContent.trim()}
-                >
-                  {isSavingCoverLetter ? "Saving..." : "Save changes"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDeleteCoverLetter}
-                  disabled={isDeletingCoverLetter}
-                >
-                  {isDeletingCoverLetter ? "Deleting..." : "Delete cover letter"}
-                </Button>
-              </div>
-            )}
-            {coverLetterError && (
-              <div
-                role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-              >
-                {coverLetterError}
-              </div>
-            )}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="cover-letter-editor">Cover letter</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  className="h-6 gap-1 px-2 text-[11px]"
-                  onClick={async () => {
-                    if (!coverLetterContent.trim()) return
-                    try {
-                      await navigator.clipboard.writeText(coverLetterContent)
-                    } catch {
-                      // ignore copy failure
-                    }
-                  }}
-                  disabled={!coverLetterContent.trim()}
-                >
-                  Copy
-                </Button>
-              </div>
-              <Textarea
-                id="cover-letter-editor"
-                value={coverLetterContent}
-                onChange={(e) => setCoverLetterContent(e.target.value)}
-                placeholder={
-                  isCoverLetterLoading
-                    ? "Loading existing cover letter..."
-                    : "Generated cover letter will appear here. You can edit it before copying."
-                }
-                rows={12}
-                disabled={isCoverLetterLoading}
-                className="font-normal leading-7 text-sm md:text-[15px]"
+          {/* Cover */}
+          <div className="relative h-40 overflow-hidden rounded-xl">
+            {job.cover_image_url ? (
+              <img
+                src={job.cover_image_url}
+                alt=""
+                className="size-full object-cover"
               />
-              <p className="text-[11px] text-muted-foreground">
-                Edits are not saved back to the backend yet. Copy this text to use it in your application.
-              </p>
+            ) : (
+              <div
+                className={`absolute inset-0 ${getCoverGradient(job.id)}`}
+              >
+                <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                  <span className="text-6xl font-bold text-primary">
+                    {getInitial(job)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <JobPostingDetailHeader
+            job={job}
+            editHref={`/job-postings/${job.id}/edit`}
+            onDelete={() => setShowDeleteConfirm(true)}
+            isDeleting={isDeleting}
+          />
+
+          {/* Practice block */}
+          <div className="rounded-lg border border-border/60 bg-muted/10 p-4">
+            <h3 className="mb-3 text-sm font-medium">Practice</h3>
+            {sessionsForJobQuery.isPending ? (
+              <p className="text-sm text-muted-foreground">Loading sessions...</p>
+            ) : sessionsForJob.length === 0 ? (
+              <Button asChild size="sm">
+                <Link href="/sessions">Start practice</Link>
+              </Button>
+            ) : sessionsForJob.length === 1 ? (
+              <Button asChild size="sm">
+                <Link href={`/sessions/${sessionsForJob[0].id}`}>
+                  Continue practice
+                </Link>
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm">
+                    Continue practice
+                    <ChevronDown className="ml-2 size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {sessionsForJob.map((session) => (
+                    <DropdownMenuItem key={session.id} asChild>
+                      <Link href={`/sessions/${session.id}`}>
+                        {formatSessionLabel(session)}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem asChild>
+                    <Link href="/sessions">Start new session</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+
+          <JobPostingSkillGapSection
+            resumes={resumes}
+            resumesPending={resumesQuery.isPending}
+            selectedResumeId={selectedResumeId}
+            onResumeChange={(v) => {
+              setSelectedResumeId(v)
+              setSkillGapError(null)
+              setSkillGapResult(null)
+            }}
+            onAnalyze={handleAnalyzeSkillGap}
+            isSkillGapLoading={isSkillGapLoading}
+            isAnalyzing={isAnalyzing}
+            skillGapError={skillGapError}
+            skillGapResult={skillGapResult}
+          />
+
+          <JobPostingCoverLetterSection
+            selectedResumeId={selectedResumeId}
+            onGenerate={handleGenerateCoverLetter}
+            isGeneratingCoverLetter={isGeneratingCoverLetter}
+            coverLetterContent={coverLetterContent}
+            onCoverLetterContentChange={setCoverLetterContent}
+            hasCoverLetter={!!coverLetter}
+            onSave={handleSaveCoverLetter}
+            onDelete={handleDeleteCoverLetter}
+            isSavingCoverLetter={isSavingCoverLetter}
+            isDeletingCoverLetter={isDeletingCoverLetter}
+            isCoverLetterLoading={isCoverLetterLoading}
+            coverLetterError={coverLetterError}
+          />
+
+
+          {/* Prep & details: content-matched cards */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">
+              Prep &amp; details
+            </h2>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {/* Notes – notepad-style card */}
+              <div className="flex flex-col rounded-xl border border-border/60 bg-muted/10 sm:col-span-2 lg:col-span-3">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <FileText className="size-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      Notes
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-7 shrink-0" asChild aria-label="Add or edit notes">
+                    <Link href={`/job-postings/${job.id}/edit`}>
+                      <Plus className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+                <div className="min-h-16 flex-1 px-4 py-3">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                    {job.notes?.trim() ?? (
+                      <span className="text-muted-foreground">No notes yet. Add key requirements or follow-ups.</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Questions to ask – list style */}
+              <div className="flex flex-col rounded-xl border border-border/60 bg-muted/10 sm:col-span-2">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <HelpCircle className="size-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      Questions to ask
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-7 shrink-0" asChild aria-label="Add or edit questions">
+                    <Link href={`/job-postings/${job.id}/edit`}>
+                      <Plus className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+                <div className="min-h-16 flex-1 px-4 py-3">
+                  {job.questions_to_ask?.trim() ? (
+                    <ul className="space-y-2 text-sm text-foreground">
+                      {job.questions_to_ask
+                        .trim()
+                        .split(/\n+/)
+                        .filter(Boolean)
+                        .map((q, i) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                            <span className="leading-relaxed">{q.trim()}</span>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No questions added yet. Jot down what you want to ask in the interview.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Talking points – bullet list */}
+              <div className="flex flex-col rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <MessageSquare className="size-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      Talking points
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="size-7 shrink-0" asChild aria-label="Add or edit talking points">
+                    <Link href={`/job-postings/${job.id}/edit`}>
+                      <Plus className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+                <div className="min-h-16 flex-1 px-4 py-3">
+                  {job.talking_points?.trim() ? (
+                    <ul className="space-y-2 text-sm text-foreground">
+                      {job.talking_points
+                        .trim()
+                        .split(/\n+/)
+                        .filter(Boolean)
+                        .map((p, i) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                            <span className="leading-relaxed">{p.trim()}</span>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Add key points you want to mention.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact – contact card */}
+              <div className="rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <User className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    Contact
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {job.contact_name || job.contact_email ? (
+                    <div className="space-y-1.5 text-sm">
+                      {job.contact_name && (
+                        <p className="font-medium text-foreground">{job.contact_name}</p>
+                      )}
+                      {job.contact_email && (
+                        <a
+                          href={`mailto:${job.contact_email}`}
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          {job.contact_email}
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No contact saved.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Application URL – primary action card */}
+              <div className="rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Link2 className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    Job ad
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {job.application_url?.trim() ? (
+                    <Button variant="outline" size="sm" className="w-full gap-2" asChild>
+                      <a
+                        href={job.application_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open job ad
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No link added.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Interview date – calendar card */}
+              <div className="rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Calendar className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    Interview
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {job.interview_at ? (
+                    <p className="text-sm font-medium text-foreground">
+                      {(() => {
+                        try {
+                          return new Date(job.interview_at).toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })
+                        } catch {
+                          return job.interview_at
+                        }
+                      })()}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No date set.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Stage – status pill card */}
+              <div className="rounded-xl border border-border/60 bg-muted/10">
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Flag className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    Stage
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {job.stage?.trim() ? (
+                    <Badge variant="secondary" className="font-medium">
+                      {getStageLabel(job.stage)}
+                    </Badge>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Not set.
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <h2 className="text-sm font-medium">Raw job description</h2>
-            <div className="rounded-lg border bg-muted/10 p-4 text-sm whitespace-pre-wrap">
-              {job.raw_text || (
-                <span className="text-muted-foreground">
-                  No raw text stored for this job posting.
-                </span>
-              )}
-            </div>
-          </div>
+          {/* Accordion: only Meta, Extracted fields, Raw description */}
+          <Accordion type="single" collapsible defaultValue="meta" className="rounded-lg border border-border/60 bg-muted/10 text-sm">
+            <AccordionItem value="meta" className="border-b border-border/60 px-4 last:border-b-0">
+              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                Meta
+              </AccordionTrigger>
+              <AccordionContent>
+                <JobPostingMetaCard job={job} />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="entities" className="border-b border-border/60 px-4 last:border-b-0">
+              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                Extracted fields
+              </AccordionTrigger>
+              <AccordionContent>
+                <JobPostingEntitiesCard entities={job.entities} />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="raw" className="border-b border-border/60 px-4 last:border-b-0">
+              <AccordionTrigger className="text-xs font-medium uppercase tracking-wide text-muted-foreground hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                Raw job description
+              </AccordionTrigger>
+              <AccordionContent>
+                <JobPostingRawDescription rawText={job.raw_text} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
             <AlertDialogContent>
@@ -755,20 +862,8 @@ export function JobPostingDetail() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <EditJobPostingDialog
-            key={job.updated_at ?? job.id}
-            axiosAuth={axiosAuth}
-            job={job}
-            open={showEditDialog}
-            onOpenChange={setShowEditDialog}
-            onSave={(updated) => {
-              setJob(updated)
-              setShowEditDialog(false)
-            }}
-          />
         </div>
       )}
     </div>
   )
 }
-

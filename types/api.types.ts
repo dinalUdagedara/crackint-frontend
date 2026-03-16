@@ -32,6 +32,10 @@ export interface Resume {
   user_id: string | null;
   entities: Record<string, string[]>;
   raw_text: string | null;
+  /** Latest CV score (0–100) if ever computed. */
+  cv_score?: number | null;
+  /** When the CV score was computed (ISO datetime). */
+  cv_scored_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,6 +63,17 @@ export interface JobPosting {
   deadline: string | null;
   created_at: string;
   updated_at: string;
+  /** User-defined display order (lower = earlier). */
+  display_order?: number | null;
+  cover_image_url?: string | null;
+  notes?: string | null;
+  questions_to_ask?: string | null;
+  interview_at?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  talking_points?: string | null;
+  application_url?: string | null;
+  stage?: string | null;
 }
 
 export type JobPostingListPayload = JobPosting[];
@@ -69,6 +84,15 @@ export interface JobPostingCreate {
   raw_text: string | null;
   location: string | null;
   deadline: string | null;
+  cover_image_url?: string | null;
+  notes?: string | null;
+  questions_to_ask?: string | null;
+  interview_at?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  talking_points?: string | null;
+  application_url?: string | null;
+  stage?: string | null;
 }
 
 /** Body for PATCH job posting: only provided fields are updated. */
@@ -77,6 +101,16 @@ export interface JobPostingUpdate {
   raw_text?: string | null;
   location?: string | null;
   deadline?: string | null;
+  display_order?: number | null;
+  cover_image_url?: string | null;
+  notes?: string | null;
+  questions_to_ask?: string | null;
+  interview_at?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  talking_points?: string | null;
+  application_url?: string | null;
+  stage?: string | null;
 }
 
 // ---- Prep sessions & messages ----
@@ -231,8 +265,11 @@ export interface LoginPayload {
 
 export interface CVScorePayload {
   score: number;
-  breakdown: { content: number; structure: number; clarity: number };
+  /** content, structure, clarity (optional keys from backend). */
+  breakdown: Record<string, number>;
   suggestions: string[];
+  /** When this score was computed (ISO datetime). Present when score is stored. */
+  scored_at?: string | null;
 }
 
 // ---- Skill-Gap ----
@@ -241,6 +278,13 @@ export interface SkillGapAlert {
   type: "missing_skill" | "weak_experience" | "weak_education";
   message: string;
   severity: "low" | "medium" | "high";
+}
+
+/** Optional LLM analysis when RESUME_JOB_FIT_LLM_ENABLED and both resume/job have raw_text. */
+export interface ResumeJobFitAnalysis {
+  fit_score: number; // 0–100
+  summary: string;
+  tailored_suggestions: string[];
 }
 
 export interface SkillGapPayload {
@@ -252,6 +296,10 @@ export interface SkillGapPayload {
   suggestions: string[];
   severity: "low" | "medium" | "high";
   alerts: SkillGapAlert[];
+  /** Present when LLM is enabled and both resume and job have raw text. */
+  llm_fit_analysis?: ResumeJobFitAnalysis | null;
+  /** When the analysis was run (POST or GET). */
+  analyzed_at?: string | null;
 }
 
 // ---- Readiness ----
@@ -299,6 +347,8 @@ export interface HomeSummaryCardItem {
   session_id?: string;
   resume_id?: string;
   job_posting_id?: string;
+  /** e.g. "open_cv" | "start_session" when the item is a primary CTA with no real data yet */
+  action_type?: string | null;
 }
 
 export interface HomeSummaryCard {

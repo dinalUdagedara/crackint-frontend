@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
+import Link from "next/link"
 import {
   Loader2,
   Pencil,
@@ -12,6 +13,7 @@ import {
   MessageSquare,
   Target,
   FileText,
+  BarChart2,
 } from "lucide-react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -294,11 +296,9 @@ export function SessionChatView() {
         <div className="mx-auto flex w-full max-w-5xl px-4 py-4">
           <div className="w-full rounded-xl  p-4 md:p-5 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex-1 space-y-1.5">
+              <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold">
-                    Prep session
-                  </span>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -346,7 +346,7 @@ export function SessionChatView() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex w-full items-center gap-2">
                   <p className="text-base font-semibold leading-snug md:text-lg">
                     {sessionTitle}
                   </p>
@@ -394,10 +394,10 @@ export function SessionChatView() {
                   </Button>
                 </div>
                 {!isHeaderCollapsed && (
-                  <>
+                  <div className="sm:block hidden">
                     <div>Created {formatDate(session.created_at)}</div>
                     <div>Updated {formatDate(session.updated_at)}</div>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -431,27 +431,39 @@ export function SessionChatView() {
                         : "Not computed yet"}
                     </span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    className="ml-auto h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]"
-                    onClick={handleGenerateCoverLetter}
-                    disabled={
-                      isGeneratingCoverLetter || !(session.resume_id && session.job_posting_id)
-                    }
-                  >
-                    {isGeneratingCoverLetter ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-3 w-3" />
-                        <span>Generate cover letter</span>
-                      </>
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {session.resume_id && session.job_posting_id && (
+                      <Button variant="outline" size="xs" className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]" asChild>
+                        <Link
+                          href={`/match?resume_id=${encodeURIComponent(session.resume_id)}&job_posting_id=${encodeURIComponent(session.job_posting_id)}`}
+                        >
+                          <BarChart2 className="h-3 w-3" />
+                          <span>Analyze CV vs job</span>
+                        </Link>
+                      </Button>
                     )}
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]"
+                      onClick={handleGenerateCoverLetter}
+                      disabled={
+                        isGeneratingCoverLetter || !(session.resume_id && session.job_posting_id)
+                      }
+                    >
+                      {isGeneratingCoverLetter ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-3 w-3" />
+                          <span>Generate cover letter</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 {session.summary && (
                   <div className="mt-4 grid gap-4 text-xs text-muted-foreground md:grid-cols-2">

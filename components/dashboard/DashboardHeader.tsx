@@ -63,6 +63,15 @@ function getBreadcrumbs(pathname: string): BreadcrumbSegment[] {
       { label: "Job Postings", href: null },
     ]
   }
+  if (pathname.match(/^\/job-postings\/[^/]+\/edit$/)) {
+    const id = pathname.split("/")[2]
+    return [
+      { label: "Home", href: "/" },
+      { label: "Job Postings", href: "/job-postings" },
+      { label: "Job", href: `/job-postings/${id}` },
+      { label: "Edit", href: null },
+    ]
+  }
   if (pathname.startsWith("/job-postings/")) {
     return [
       { label: "Home", href: "/" },

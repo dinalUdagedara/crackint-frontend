@@ -5,7 +5,12 @@ type ScoreResultCardProps = {
 }
 
 export function ScoreResultCard({ payload }: ScoreResultCardProps) {
-  const { score, breakdown, suggestions } = payload
+  const { score, breakdown, suggestions, scored_at } = payload
+  const hasBreakdown =
+    breakdown &&
+    (breakdown.content != null ||
+      breakdown.structure != null ||
+      breakdown.clarity != null)
 
   return (
     <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
@@ -14,17 +19,30 @@ export function ScoreResultCard({ payload }: ScoreResultCardProps) {
           <span className="text-3xl font-bold text-foreground">{score}</span>
           <span className="text-sm text-muted-foreground">/ 100</span>
         </div>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <span className="text-muted-foreground">
-            Content: <strong>{breakdown.content}</strong>
+        {scored_at && (
+          <span className="text-xs text-muted-foreground">
+            Last scored {new Date(scored_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
           </span>
-          <span className="text-muted-foreground">
-            Structure: <strong>{breakdown.structure}</strong>
-          </span>
-          <span className="text-muted-foreground">
-            Clarity: <strong>{breakdown.clarity}</strong>
-          </span>
-        </div>
+        )}
+        {hasBreakdown && (
+          <div className="flex flex-wrap gap-3 text-sm">
+            {breakdown.content != null && (
+              <span className="text-muted-foreground">
+                Content: <strong>{breakdown.content}</strong>
+              </span>
+            )}
+            {breakdown.structure != null && (
+              <span className="text-muted-foreground">
+                Structure: <strong>{breakdown.structure}</strong>
+              </span>
+            )}
+            {breakdown.clarity != null && (
+              <span className="text-muted-foreground">
+                Clarity: <strong>{breakdown.clarity}</strong>
+              </span>
+            )}
+          </div>
+        )}
       </div>
       {suggestions.length > 0 && (
         <div>

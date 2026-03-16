@@ -16,11 +16,11 @@ export default function TitleSection({
   return (
     <section
       className={cn(
-        "flex min-w-0 flex-col items-center gap-2 rounded-xl px-3 py-8 text-card-foreground sm:px-4 sm:py-16",
+        "flex min-w-0 flex-col items-center gap-2 rounded-xl px-3 py-8 text-card-foreground sm:px-4 sm:py-8",
         className
       )}
     >
-      <h1 className="text-center text-2xl font-bold tracking-tight text-[#F7D0D0] sm:text-3xl md:text-4xl">{title}</h1>
+      <h1 className="text-center text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">{title}</h1>
       {subtitle && (
         <p className="mt-1 text-center text-xs text-muted-foreground sm:text-sm md:text-base">{subtitle}</p>
       )}

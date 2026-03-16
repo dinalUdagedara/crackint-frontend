@@ -6,8 +6,13 @@ import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import type { ReadinessSummaryResponse, ReadinessTrendItem } from "@/types/api.types"
 import { getReadinessSummary, getReadinessTrend } from "@/services/readiness.service"
 import Link from "next/link"
-import { BarChart3, TrendingUp } from "lucide-react"
+import { BarChart3, Info, TrendingUp } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { ReadinessSkeletonCard } from "./readiness-dashboard/ReadinessSkeletonCard"
 import { ReadinessTrendBadge } from "./readiness-dashboard/ReadinessTrendBadge"
@@ -104,13 +109,30 @@ export default function ReadinessDashboard() {
 
       {state === "success" && summary && (
         <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] min-w-0">
+          {/* <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] min-w-0">
             <Card className="p-4 flex flex-col gap-3 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Combined readiness
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Combined readiness
+                    </p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex size-4 shrink-0 rounded-full text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-label="What is combined readiness?"
+                        >
+                          <Info className="size-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[240px]">
+                        Combined score includes CV fit and trends; session
+                        average is from practice feedback only.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-semibold">
                       {Math.round(summary.combined_score)}
@@ -122,6 +144,10 @@ export default function ReadinessDashboard() {
                 </div>
                 <ReadinessTrendBadge trend={summary.trend} />
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Combined score includes CV fit and trends; session average is
+                from practice feedback only.
+              </p>
               <div className="grid gap-2 grid-cols-1 sm:grid-cols-3 text-xs">
                 {summary.cv_score !== null && (
                   <ReadinessMiniStat
@@ -176,7 +202,7 @@ export default function ReadinessDashboard() {
                 scored sessions.
               </p>
             </Card>
-          </div>
+          </div> */}
 
           <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 min-w-0">
             <Card className="p-4 flex flex-col gap-3 min-w-0 overflow-hidden">
@@ -193,6 +219,23 @@ export default function ReadinessDashboard() {
                   <p className="text-[11px] text-muted-foreground">
                     Share of your practice feedback by question difficulty (easy, medium, hard) from recent sessions.
                   </p>
+                  {(() => {
+                    const { easy: e, medium: m, hard: h } = difficulty
+                    const min = Math.min(e, m, h)
+                    const focusHard = h === min && (e + m + h) > 0
+                    return focusHard ? (
+                      <p className="text-xs text-muted-foreground">
+                        Focus on{" "}
+                        <Link
+                          href="/sessions"
+                          className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+                        >
+                          Hard questions
+                        </Link>{" "}
+                        in your next session.
+                      </p>
+                    ) : null
+                  })()}
                 </>
               ) : (
                 <ReadinessEmptyState

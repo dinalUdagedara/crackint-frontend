@@ -107,3 +107,19 @@ export async function deleteJobPosting(
     return throwOnAxiosError(e)
   }
 }
+
+/** Bulk reorder job postings by ID array (order of array = display_order 0, 1, 2, …). */
+export async function reorderJobPostings(
+  axiosAuth: AxiosInstance,
+  order: string[]
+): Promise<ApiResponse<{ updated?: boolean }>> {
+  try {
+    const { data } = await axiosAuth.put<ApiResponse<{ updated?: boolean }>>(
+      "/job-postings/reorder",
+      { order }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}

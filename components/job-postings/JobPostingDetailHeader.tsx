@@ -1,18 +1,22 @@
 "use client"
 
+import Link from "next/link"
 import { Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { JobPosting } from "@/types/api.types"
 
 interface JobPostingDetailHeaderProps {
   job: JobPosting
-  onEdit: () => void
+  /** If set, Edit button links to this URL (e.g. edit page). Otherwise onEdit is used. */
+  editHref?: string
+  onEdit?: () => void
   onDelete: () => void
   isDeleting?: boolean
 }
 
 export function JobPostingDetailHeader({
   job,
+  editHref,
   onEdit,
   onDelete,
   isDeleting = false,
@@ -30,10 +34,19 @@ export function JobPostingDetailHeader({
         </p>
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={onEdit}>
-          <Pencil className="mr-2 size-4" />
-          Edit
-        </Button>
+        {editHref ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={editHref}>
+              <Pencil className="mr-2 size-4" />
+              Edit
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Pencil className="mr-2 size-4" />
+            Edit
+          </Button>
+        )}
         <Button
           variant="destructive"
           size="sm"

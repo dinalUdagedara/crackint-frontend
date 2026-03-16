@@ -59,12 +59,16 @@ export async function createSession(
 export async function listSessions(
   axiosAuth: AxiosInstance,
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  job_posting_id?: string
 ): Promise<ApiResponse<PrepSessionListPayload>> {
   try {
+    const params: { page: number; page_size: number; job_posting_id?: string } =
+      { page, page_size: pageSize }
+    if (job_posting_id) params.job_posting_id = job_posting_id
     const { data } = await axiosAuth.get<ApiResponse<PrepSessionListPayload>>(
       "/sessions",
-      { params: { page, page_size: pageSize } }
+      { params }
     )
     return data
   } catch (e) {

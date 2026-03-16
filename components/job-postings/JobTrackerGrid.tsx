@@ -93,23 +93,22 @@ function SortableJobCard({
   )
 }
 
-const PREVIEW_LENGTH = 80
-
 function getTitle(job: JobPosting): string {
-  const title = job.entities?.JOB_TITLE?.[0]
+  const title = job.entities?.JOB_TITLE?.[0]?.trim()
   if (title) return title
-  return job.raw_text
-    ? job.raw_text.slice(0, PREVIEW_LENGTH) +
-        (job.raw_text.length > PREVIEW_LENGTH ? "..." : "")
-    : job.id.slice(0, 8) + "..."
+  return "Unknown job"
 }
 
-function getCompany(job: JobPosting): string {
-  return job.entities?.COMPANY?.[0] ?? "—"
+function getCompany(job: JobPosting): { text: string; isMissing: boolean } {
+  const company = job.entities?.COMPANY?.[0]?.trim()
+  if (company) return { text: company, isMissing: false }
+  return { text: "Company not set", isMissing: true }
 }
 
-function getLocation(job: JobPosting): string {
-  return job.location ?? job.entities?.LOCATION?.[0] ?? "—"
+function getLocation(job: JobPosting): { text: string; isMissing: boolean } {
+  const location = (job.location ?? job.entities?.LOCATION?.[0])?.trim()
+  if (location) return { text: location, isMissing: false }
+  return { text: "Location not set", isMissing: true }
 }
 
 /** Theme-aware cover gradient classes (primary/muted). */
@@ -370,190 +369,241 @@ export function JobTrackerGrid() {
                   const isUrgent = daysLeft !== null && daysLeft <= 7
                   const interviewDays = daysUntilInterview(job.interview_at)
                   const hasStage = job.stage && getStageLabel(job.stage)
+                  const locationInfo = getLocation(job)
 
                   return (
                     <SortableJobCard key={job.id} id={job.id}>
                       <Card
                         className="group overflow-hidden rounded-2xl border-border/60 shadow-sm transition-shadow duration-200 hover:shadow-md"
                       >
-                  {/* Cover */}
-                  <div className="relative h-28 overflow-hidden">
-                    {job.cover_image_url ? (
-                      <img
-                        src={job.cover_image_url}
-                        alt=""
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <div
-                        className={`absolute inset-0 ${getCoverGradient(job.id)}`}
-                      >
-                        <div className="absolute inset-0 flex items-center justify-center opacity-40">
-                          <span className="text-5xl font-bold text-primary">
-                            {getInitial(job)}
-                          </span>
+                        {/* Cover */}
+                        <div className="relative h-28 overflow-hidden">
+                          {job.cover_image_url ? (
+                            <img
+                              src={job.cover_image_url}
+                              alt=""
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <div
+                              className={`absolute inset-0 ${getCoverGradient(job.id)}`}
+                            >
+                              <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                                <span className="text-5xl font-bold text-primary">
+                                  {getInitial(job)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="p-5">
-                    <h3 className="mb-1 line-clamp-2 text-lg font-semibold tracking-tight text-foreground">
-                      {getTitle(job)}
-                    </h3>
-                    <p className="mb-4 text-sm text-muted-foreground">
-                      {getCompany(job)}
-                    </p>
+                        <div className="p-5">
+                          <h3 className="mb-1 line-clamp-2 text-lg font-semibold tracking-tight text-foreground">
+                            {getTitle(job)}
+                          </h3>
+                          {(() => {
+                            const companyInfo = getCompany(job)
+                            const content = (
+                              <span
+                                className={
+                                  companyInfo.isMissing
+                                    ? "italic text-muted-foreground underline-offset-4 hover:underline"
+                                    : undefined
+                                }
+                              >
+                                {companyInfo.text}
+                              </span>
+                            )
+                            return (
+                              <p className="mb-4 text-sm text-muted-foreground">
+                                {companyInfo.isMissing ? (
+                                  <Link href={`/job-postings/${job.id}/edit`}>
+                                    {content}
+                                  </Link>
+                                ) : (
+                                  content
+                                )}
+                              </p>
+                            )
+                          })()}
 
-                    <div className="mb-4 space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="size-4 shrink-0" />
-                        <span className="truncate">{getLocation(job)}</span>
-                      </div>
-                      {job.deadline && (
-                        <div
-                          className={`flex items-center gap-2 text-sm font-medium ${
-                            isUrgent
-                              ? "text-destructive"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          <Calendar className="size-4 shrink-0" />
-                          {daysLeft !== null
-                            ? `${daysLeft} days left`
-                            : "Deadline set"}
-                        </div>
-                      )}
-                      {sessionCount > 0 && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="size-4 shrink-0" />
-                          {sessionCount}{" "}
-                          {sessionCount === 1 ? "session" : "sessions"}
-                        </div>
-                      )}
-                      {job.interview_at && (
-                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                          <Calendar className="size-4 shrink-0" />
-                          {interviewDays !== null
-                            ? interviewDays <= 0
-                              ? "Interview today or past"
-                              : `Interview in ${interviewDays} days`
-                            : "Interview scheduled"}
-                        </div>
-                      )}
-                    </div>
+                          <div className="mb-4 space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="size-4 shrink-0" />
+                              {locationInfo.isMissing ? (
+                                <Link
+                                  href={`/job-postings/${job.id}/edit`}
+                                  className="truncate italic text-muted-foreground underline-offset-4 hover:underline"
+                                >
+                                  {locationInfo.text}
+                                </Link>
+                              ) : (
+                                <span className="truncate">{locationInfo.text}</span>
+                              )}
+                            </div>
+                            <div
+                              className={`flex items-center gap-2 text-sm font-medium ${job.deadline && isUrgent
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                                }`}
+                            >
+                              <Calendar className="size-4 shrink-0" />
+                              {job.deadline ? (
+                                daysLeft !== null
+                                  ? `${daysLeft} days left`
+                                  : "Deadline set"
+                              ) : (
+                                <Link
+                                  href={`/job-postings/${job.id}/edit`}
+                                  className="italic underline-offset-4 hover:underline"
+                                >
+                                  No deadline set
+                                </Link>
+                              )}
+                            </div>
+                            {sessionCount > 0 && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Clock className="size-4 shrink-0" />
+                                {sessionCount}{" "}
+                                {sessionCount === 1 ? "session" : "sessions"}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                              <Calendar className="size-4 shrink-0" />
+                              {job.interview_at ? (
+                                interviewDays !== null
+                                  ? interviewDays <= 0
+                                    ? "Interview today or past"
+                                    : `Interview in ${interviewDays} days`
+                                  : "Interview scheduled"
+                              ) : (
+                                <Link
+                                  href={`/job-postings/${job.id}/edit`}
+                                  className="italic underline-offset-4 hover:underline"
+                                >
+                                  No interview date
+                                </Link>
+                              )}
+                            </div>
+                          </div>
 
-                    {/* Stage + Status Badges */}
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      {hasStage && (
-                        <Badge variant="outline" className="border-border">
-                          {getStageLabel(job.stage)}
-                        </Badge>
-                      )}
-                      {sessionCount === 0 ? (
-                        <Badge
-                          variant="secondary"
-                          className="bg-muted text-muted-foreground"
-                        >
-                          Not started
-                        </Badge>
-                      ) : sessionCount >= 3 ? (
-                        <Badge className="border-0 bg-primary/15 text-primary">
-                          Well prepared
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="secondary"
-                          className="border-primary/30 bg-primary/10 text-primary"
-                        >
-                          In progress
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="mb-4 flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 gap-2 rounded-xl"
-                        asChild
-                      >
-                        <Link href={`/job-postings/${job.id}`}>
-                          <BookOpen className="size-4" />
-                          View
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="size-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                        asChild
-                        aria-label="Edit job"
-                      >
-                        <Link href={`/job-postings/${job.id}/edit`}>
-                          <Edit2 className="size-4" />
-                        </Link>
-                      </Button>
-                    </div>
-
-                    {/* Practice: 0 -> /sessions, 1 -> /sessions/id, 2+ -> dropdown */}
-                    {sessionCount === 0 ? (
-                      <Button
-                        className="w-full gap-2 rounded-xl font-medium"
-                        size="sm"
-                        asChild
-                      >
-                        <Link href="/sessions">
-                          Start practice
-                          <ChevronRight className="size-4" />
-                        </Link>
-                      </Button>
-                    ) : sessionCount === 1 ? (
-                      <Button
-                        className="w-full gap-2 rounded-xl font-medium"
-                        size="sm"
-                        asChild
-                      >
-                        <Link href={`/sessions/${sessions[0].id}`}>
-                          Continue practice
-                          <ChevronRight className="size-4" />
-                        </Link>
-                      </Button>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            className="w-full gap-2 rounded-xl font-medium"
-                            size="sm"
-                          >
-                            Continue practice
-                            <ChevronDown className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-56">
-                          {sessions.map((session) => (
-                            <DropdownMenuItem key={session.id} asChild>
-                              <Link href={`/sessions/${session.id}`}>
-                                {formatSessionLabel(session)}
+                          {/* Stage + Status Badges */}
+                          <div className="mb-4 flex flex-wrap gap-2">
+                            {hasStage ? (
+                              <Badge variant="outline" className="border-border">
+                                {getStageLabel(job.stage)}
+                              </Badge>
+                            ) : (
+                              <Link href={`/job-postings/${job.id}/edit`}>
+                                <Badge className="bg-muted text-muted-foreground underline-offset-4 hover:underline">
+                                  Stage not set
+                                </Badge>
                               </Link>
-                            </DropdownMenuItem>
-                          ))}
-                          <DropdownMenuItem asChild>
-                            <Link href="/sessions">Start new session</Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                            )}
+                            {sessionCount === 0 ? (
+                              <Badge
+                                variant="secondary"
+                                className="bg-muted text-muted-foreground"
+                              >
+                                Not started
+                              </Badge>
+                            ) : sessionCount >= 3 ? (
+                              <Badge className="border-0 bg-primary/15 text-primary">
+                                Well prepared
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="secondary"
+                                className="border-primary/30 bg-primary/10 text-primary"
+                              >
+                                In progress
+                              </Badge>
+                            )}
+                          </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setJobToDelete(job)}
-                      className="mt-3 w-full rounded-lg py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </Card>
+                          <div className="mb-4 flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 gap-2 rounded-xl"
+                              asChild
+                            >
+                              <Link href={`/job-postings/${job.id}`}>
+                                <BookOpen className="size-4" />
+                                View
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="size-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                              asChild
+                              aria-label="Edit job"
+                            >
+                              <Link href={`/job-postings/${job.id}/edit`}>
+                                <Edit2 className="size-4" />
+                              </Link>
+                            </Button>
+                          </div>
+
+                          {/* Practice: 0 -> /sessions, 1 -> /sessions/id, 2+ -> dropdown */}
+                          {sessionCount === 0 ? (
+                            <Button
+                              className="w-full gap-2 rounded-xl font-medium"
+                              size="sm"
+                              asChild
+                            >
+                              <Link href="/sessions">
+                                Start practice
+                                <ChevronRight className="size-4" />
+                              </Link>
+                            </Button>
+                          ) : sessionCount === 1 ? (
+                            <Button
+                              className="w-full gap-2 rounded-xl font-medium"
+                              size="sm"
+                              asChild
+                            >
+                              <Link href={`/sessions/${sessions[0].id}`}>
+                                Continue practice
+                                <ChevronRight className="size-4" />
+                              </Link>
+                            </Button>
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  className="w-full gap-2 rounded-xl font-medium"
+                                  size="sm"
+                                >
+                                  Continue practice
+                                  <ChevronDown className="size-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="w-56">
+                                {sessions.map((session) => (
+                                  <DropdownMenuItem key={session.id} asChild>
+                                    <Link href={`/sessions/${session.id}`}>
+                                      {formatSessionLabel(session)}
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuItem asChild>
+                                  <Link href="/sessions">Start new session</Link>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setJobToDelete(job)}
+                            className="mt-3 w-full rounded-lg py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </Card>
                     </SortableJobCard>
                   )
                 })}

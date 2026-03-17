@@ -30,14 +30,26 @@ export async function runSkillGapAnalysis(
   axiosAuth: AxiosInstance,
   resumeId: string,
   jobPostingId: string,
-  options?: { use_llm?: boolean }
+  options?: { use_llm?: boolean; candidate_location?: string }
 ): Promise<ApiResponse<SkillGapPayload>> {
   try {
     const params =
       options?.use_llm === true ? new URLSearchParams({ use_llm: "true" }) : undefined
+    const body: {
+      resume_id: string
+      job_posting_id: string
+      candidate_location?: string
+    } = {
+      resume_id: resumeId,
+      job_posting_id: jobPostingId,
+    }
+    const trimmedLocation = options?.candidate_location?.trim()
+    if (trimmedLocation) {
+      body.candidate_location = trimmedLocation
+    }
     const { data } = await axiosAuth.post<ApiResponse<SkillGapPayload>>(
       `/match/skill-gap${params ? `?${params.toString()}` : ""}`,
-      { resume_id: resumeId, job_posting_id: jobPostingId }
+      body
     )
     return data
   } catch (e) {

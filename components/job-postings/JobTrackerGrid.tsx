@@ -428,17 +428,28 @@ export function JobTrackerGrid() {
                           })()}
 
                           <div className="mb-4 space-y-2">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="size-4 shrink-0" />
-                              {locationInfo.isMissing ? (
-                                <Link
-                                  href={`/job-postings/${job.id}/edit`}
-                                  className="truncate italic text-muted-foreground underline-offset-4 hover:underline"
-                                >
-                                  {locationInfo.text}
-                                </Link>
-                              ) : (
-                                <span className="truncate">{locationInfo.text}</span>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <MapPin className="size-4 shrink-0" />
+                                {locationInfo.isMissing ? (
+                                  <>
+                                    <span className="truncate">Location not specified.</span>
+                                    <Link
+                                      href={`/job-postings/${job.id}/edit`}
+                                      className="shrink-0 text-xs italic underline-offset-4 hover:underline"
+                                      title="Job location not specified. Ask the recruiter or check the original posting."
+                                    >
+                                      Set location
+                                    </Link>
+                                  </>
+                                ) : (
+                                  <span className="truncate">{locationInfo.text}</span>
+                                )}
+                              </div>
+                              {locationInfo.isMissing && (
+                                <Badge variant="outline" className="w-fit border-amber-500/50 bg-amber-500/10 text-xs text-amber-700 dark:text-amber-400">
+                                  Location: Not specified
+                                </Badge>
                               )}
                             </div>
                             <div

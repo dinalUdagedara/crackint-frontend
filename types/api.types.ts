@@ -284,8 +284,17 @@ export interface CVScorePayload {
 
 // ---- Skill-Gap ----
 
+export interface LocationSuitability {
+  job_location_display: string | null;
+  is_remote: boolean;
+  candidate_location: string | null;
+  suitability: "good" | "caution" | "unknown";
+  message: string;
+  highlight_remote_match: boolean;
+}
+
 export interface SkillGapAlert {
-  type: "missing_skill" | "weak_experience" | "weak_education";
+  type: "missing_skill" | "weak_experience" | "weak_education" | "location_mismatch";
   message: string;
   severity: "low" | "medium" | "high";
 }
@@ -310,6 +319,8 @@ export interface SkillGapPayload {
   llm_fit_analysis?: ResumeJobFitAnalysis | null;
   /** When the analysis was run (POST or GET). */
   analyzed_at?: string | null;
+  /** Optional job vs candidate location analysis (when enabled on backend). */
+  location_suitability?: LocationSuitability | null;
 }
 
 // ---- Readiness ----

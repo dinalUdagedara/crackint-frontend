@@ -137,6 +137,7 @@ export function JobPostingDetail() {
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
   const [isSkillGapLoading, setIsSkillGapLoading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [candidateLocation, setCandidateLocation] = useState<string>("")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [coverLetter, setCoverLetter] = useState<CoverLetter | null>(null)
@@ -234,30 +235,12 @@ export function JobPostingDetail() {
         if (res.success && res.payload) {
           setSkillGapResult(res.payload)
         }
+        // If 404, leave result null — user must click "Analyze" to run analysis
       } catch (err) {
         if (!isMounted) return
         if (err instanceof MatchError && err.status === 404) {
           setSkillGapError(null)
           setSkillGapResult(null)
-          try {
-            const postRes = await runSkillGapAnalysis(
-              axiosAuth,
-              selectedResumeId,
-              id,
-              { use_llm: true }
-            )
-            if (!isMounted) return
-            if (postRes.success && postRes.payload) {
-              setSkillGapResult(postRes.payload)
-            }
-          } catch (postErr) {
-            if (!isMounted) return
-            setSkillGapError(
-              postErr instanceof MatchError
-                ? postErr.message
-                : "Failed to analyze match."
-            )
-          }
         } else {
           setSkillGapError(
             err instanceof MatchError ? err.message : "Failed to load analysis."
@@ -283,6 +266,7 @@ export function JobPostingDetail() {
     try {
       const res = await runSkillGapAnalysis(axiosAuth, selectedResumeId, id, {
         use_llm: true,
+        candidate_location: candidateLocation,
       })
       if (res.success && res.payload) {
         setSkillGapResult(res.payload)
@@ -555,6 +539,8 @@ export function JobPostingDetail() {
             isAnalyzing={isAnalyzing}
             skillGapError={skillGapError}
             skillGapResult={skillGapResult}
+            candidateLocation={candidateLocation}
+            onCandidateLocationChange={setCandidateLocation}
           />
 
           <JobPostingCoverLetterSection

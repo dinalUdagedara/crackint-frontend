@@ -78,6 +78,16 @@ export interface JobPosting {
 
 export type JobPostingListPayload = JobPosting[];
 
+/** Item from GET /job-postings/near-deadline (deadline or interview in next N days). */
+export interface NearDeadlineItem {
+  job: JobPosting;
+  next_milestone_date: string;
+  next_milestone_type: "deadline" | "interview";
+  days_until: number;
+}
+
+export type NearDeadlinePayload = NearDeadlineItem[];
+
 export interface JobPostingCreate {
   user_id: string | null;
   entities: Record<string, string[]>;

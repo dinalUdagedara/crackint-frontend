@@ -5,6 +5,7 @@ import type {
   JobPostingCreate,
   JobPostingListPayload,
   JobPostingUpdate,
+  NearDeadlinePayload,
 } from "@/types/api.types"
 
 export class JobPostingsError extends Error {
@@ -117,6 +118,23 @@ export async function reorderJobPostings(
     const { data } = await axiosAuth.put<ApiResponse<{ updated?: boolean }>>(
       "/job-postings/reorder",
       { order }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
+/** Job postings with deadline or interview in the next N days (default 7, max 90). Sorted soonest first. */
+export async function getNearDeadlineJobPostings(
+  axiosAuth: AxiosInstance,
+  days = 7
+): Promise<ApiResponse<NearDeadlinePayload>> {
+  const clamped = Math.min(90, Math.max(1, days))
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<NearDeadlinePayload>>(
+      "/job-postings/near-deadline",
+      { params: { days: clamped } }
     )
     return data
   } catch (e) {

@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ClientOnly } from "@/components/common/ClientOnly"
 import { ModeToggle } from "@/components/common/ModeToggler"
+import { NearDeadlineNotification } from "@/components/dashboard/NearDeadlineNotification"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,6 +126,9 @@ export function DashboardHeader() {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="ml-auto flex items-center gap-2">
+        <ClientOnly>
+          <NearDeadlineNotification />
+        </ClientOnly>
         <ClientOnly>
           <ModeToggle />
         </ClientOnly>

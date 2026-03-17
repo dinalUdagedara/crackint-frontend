@@ -22,7 +22,11 @@ import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getJobPosting, deleteJobPosting } from "@/services/job-postings.service"
 import { listSessions } from "@/services/sessions.service"
 import { listResumes } from "@/services/resume-uploader.service"
-import { runSkillGapAnalysis, MatchError } from "@/services/match.service"
+import {
+  getStoredSkillGap,
+  runSkillGapAnalysis,
+  MatchError,
+} from "@/services/match.service"
 import {
   deleteCoverLetter,
   generateCoverLetter,
@@ -212,13 +216,49 @@ export function JobPostingDetail() {
     }
   }, [axiosAuth, job, selectedResumeId])
 
-  // Clear result when resume or job changes so we don't show stale data
+  // When resume/job changes, try to load existing stored analysis (GET only).
+  // If none exists (404), leave result empty and wait for the user to click Analyze.
   useEffect(() => {
-    if (!id || !selectedResumeId) {
+    if (!id || !job || !selectedResumeId) {
       setSkillGapResult(null)
       setSkillGapError(null)
+      setIsSkillGapLoading(false)
+      return
     }
-  }, [id, selectedResumeId])
+
+    let isMounted = true
+    async function fetchStoredSkillGap() {
+      setIsSkillGapLoading(true)
+      setSkillGapError(null)
+      setSkillGapResult(null)
+      try {
+        const res = await getStoredSkillGap(axiosAuth, selectedResumeId, id)
+        if (!isMounted) return
+        if (res.success && res.payload) {
+          setSkillGapResult(res.payload)
+        }
+        // If 404, leave result null — user must click "Analyze" to run analysis
+      } catch (err) {
+        if (!isMounted) return
+        if (err instanceof MatchError && err.status === 404) {
+          setSkillGapError(null)
+          setSkillGapResult(null)
+        } else {
+          setSkillGapError(
+            err instanceof MatchError ? err.message : "Failed to load analysis."
+          )
+        }
+      } finally {
+        if (isMounted) setIsSkillGapLoading(false)
+      }
+    }
+
+    void fetchStoredSkillGap()
+
+    return () => {
+      isMounted = false
+    }
+  }, [axiosAuth, id, job, selectedResumeId])
 
   // No automatic fetch when resume is selected — user must click "Analyze" or "Re-analyse"
   async function handleAnalyzeSkillGap() {

@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
+import { ParticlesBackground } from "@/components/ui/particles-background"
 import {
   SidebarInset,
   SidebarProvider,
@@ -12,10 +13,13 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
+      <ParticlesBackground />
       <AppSidebar />
-      <SidebarInset>
-        <DashboardHeader />
-        {children}
+      <SidebarInset className="bg-transparent">
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <DashboardHeader />
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

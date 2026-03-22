@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { JobPostingSkillGapSection } from "@/components/job-postings/JobPostingSkillGapSection"
+import { HeroGradientCard } from "@/components/ui/hero-gradient-card"
 
 export function MatchView() {
   const searchParams = useSearchParams()
@@ -180,9 +181,8 @@ export function MatchView() {
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-muted/40 via-muted/20 to-transparent p-6 shadow-sm md:p-8">
-        <div className="relative flex items-start gap-4">
+      <HeroGradientCard>
+        <div className="flex items-start gap-4">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <BarChart2 className="size-6" />
           </div>
@@ -195,7 +195,7 @@ export function MatchView() {
             </p>
           </div>
         </div>
-      </div>
+      </HeroGradientCard>
 
       {/* Single selection card */}
       <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">

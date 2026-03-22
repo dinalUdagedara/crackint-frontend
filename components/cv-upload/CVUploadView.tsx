@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { ExtractedEntitiesCard } from "./ExtractedEntitiesCard"
+import { HeroGradientCard } from "@/components/ui/hero-gradient-card"
 
 function toResume(result: ResumeExtractResult): Resume | null {
   if (!result.id) return null
@@ -183,9 +184,8 @@ export default function CVUploadView() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
-          {/* Hero */}
-          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-muted/40 via-muted/20 to-transparent p-6 shadow-sm md:p-8">
-            <div className="relative flex items-start gap-4">
+          <HeroGradientCard>
+            <div className="flex items-start gap-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <FileUp className="size-6" />
               </div>
@@ -199,7 +199,7 @@ export default function CVUploadView() {
                 </p>
               </div>
             </div>
-          </div>
+          </HeroGradientCard>
 
           {error && (
             <div
@@ -285,71 +285,71 @@ export default function CVUploadView() {
                         isLoading && "pointer-events-none opacity-60"
                       )}
                     >
-                    <Tabs defaultValue="upload" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 rounded-xl bg-muted/50 p-1">
-                        <TabsTrigger
-                          value="upload"
-                          className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                        >
-                          <FileUp className="size-4 hidden sm:block" />
-                          Upload file
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="paste"
-                          className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                        >
-                          <FileText className="size-4 hidden sm:block" />
-                          Paste text
-                        </TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="upload" className="mt-5 space-y-1.5">
-                        <Label className="text-sm font-medium">New CV file</Label>
-                        <CVFileDropZone onFileSelect={handleFileSelect} />
-                      </TabsContent>
-                      <TabsContent value="paste" className="mt-5 space-y-1.5">
-                        <Label className="text-sm font-medium">Paste new CV text</Label>
-                        <CVPasteArea
-                          value={pasteText}
-                          onChange={(value) => {
-                            setPasteText(value)
-                            setError(null)
-                          }}
-                          placeholder="Paste new CV text to replace..."
-                        />
-                      </TabsContent>
-                    </Tabs>
-                    <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-2">
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={useEnhancedExtraction}
-                          onChange={(e) =>
-                            setUseEnhancedExtraction(e.target.checked)
-                          }
-                          className="size-4 rounded border-input"
-                        />
-                        <span className="text-sm font-medium">Use enhanced extraction (AI)</span>
-                      </label>
-                      <p className="text-xs text-muted-foreground">
-                        Enhanced extraction may improve completeness (e.g. skills); if
-                        unavailable, standard extraction is used automatically.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleExtractClick}
-                      disabled={isLoading || !canExtract}
-                      variant="outline"
-                      className="w-full rounded-xl md:w-auto md:min-w-[140px]"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="size-4 animate-spin" />
-                          Extracting...
-                        </>
-                      ) : (
-                        "Extract"
-                      )}
-                    </Button>
+                      <Tabs defaultValue="upload" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 rounded-xl bg-muted/50 p-1">
+                          <TabsTrigger
+                            value="upload"
+                            className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                          >
+                            <FileUp className="size-4 hidden sm:block" />
+                            Upload file
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="paste"
+                            className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                          >
+                            <FileText className="size-4 hidden sm:block" />
+                            Paste text
+                          </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="upload" className="mt-5 space-y-1.5">
+                          <Label className="text-sm font-medium">New CV file</Label>
+                          <CVFileDropZone onFileSelect={handleFileSelect} />
+                        </TabsContent>
+                        <TabsContent value="paste" className="mt-5 space-y-1.5">
+                          <Label className="text-sm font-medium">Paste new CV text</Label>
+                          <CVPasteArea
+                            value={pasteText}
+                            onChange={(value) => {
+                              setPasteText(value)
+                              setError(null)
+                            }}
+                            placeholder="Paste new CV text to replace..."
+                          />
+                        </TabsContent>
+                      </Tabs>
+                      <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-2">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={useEnhancedExtraction}
+                            onChange={(e) =>
+                              setUseEnhancedExtraction(e.target.checked)
+                            }
+                            className="size-4 rounded border-input"
+                          />
+                          <span className="text-sm font-medium">Use enhanced extraction (AI)</span>
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                          Enhanced extraction may improve completeness (e.g. skills); if
+                          unavailable, standard extraction is used automatically.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleExtractClick}
+                        disabled={isLoading || !canExtract}
+                        variant="outline"
+                        className="w-full rounded-xl md:w-auto md:min-w-[140px]"
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin" />
+                            Extracting...
+                          </>
+                        ) : (
+                          "Extract"
+                        )}
+                      </Button>
                     </div>
                     {isLoading && (
                       <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">

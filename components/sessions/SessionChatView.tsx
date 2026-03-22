@@ -292,8 +292,12 @@ export function SessionChatView() {
   return (
     <div className="flex h-full flex-col relative overflow-hidden bg-background">
       {/* Full-width header bar across the session view */}
-      <div className="sticky top-0 z-20 w-full border border-border/70 bg-linear-to-br from-muted/40 via-background to-background backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl px-4 py-4">
+      <div className="sticky top-0 z-20 w-full border border-border/70 relative overflow-hidden bg-background backdrop-blur-md">
+        <div
+          className="pointer-events-none absolute inset-0 bg-linear-to-br from-muted/30 via-transparent to-transparent"
+          aria-hidden
+        />
+        <div className="relative mx-auto flex w-full max-w-5xl px-4 py-4">
           <div className="w-full rounded-xl  p-4 md:p-5 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1.5">

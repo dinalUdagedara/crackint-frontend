@@ -1,14 +1,14 @@
 import { LayoutDashboard } from "lucide-react"
 import { ResumeList } from "@/components/admin/ResumeList"
+import { HeroGradientCard } from "@/components/ui/hero-gradient-card"
 
 export default function AdminPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="mx-auto flex max-w-4xl flex-col gap-6">
-          {/* Hero */}
-          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-muted/40 via-muted/20 to-transparent p-6 shadow-sm md:p-8">
-            <div className="relative flex items-start gap-4">
+          <HeroGradientCard>
+            <div className="flex items-start gap-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <LayoutDashboard className="size-6" />
               </div>
@@ -21,7 +21,7 @@ export default function AdminPage() {
                 </p>
               </div>
             </div>
-          </div>
+          </HeroGradientCard>
 
           <ResumeList title="All resumes" description="View and manage all CVs in the system." />
         </div>

@@ -216,7 +216,7 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
 
   return (
     <div className="space-y-8">
-      <section className="space-y-3 rounded-lg border bg-muted/20 p-4">
+      <section className="space-y-3 rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold tracking-tight">

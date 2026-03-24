@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import Link from "next/link"
-import { ArrowLeft, BarChart2, FileText, Briefcase, Loader2 } from "lucide-react"
+import { BarChart2, Briefcase, Download, FileText, Loader2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { useQuery } from "@tanstack/react-query"
@@ -30,6 +29,9 @@ import {
 } from "@/components/ui/select"
 import { JobPostingSkillGapSection } from "@/components/job-postings/JobPostingSkillGapSection"
 import { HeroGradientCard } from "@/components/ui/hero-gradient-card"
+import { downloadPdfDocument, buildPdfFilenameBase } from "@/components/pdf/download-pdf"
+import { MatchReportPdfDocument } from "@/components/pdf/match-report-pdf"
+import { toast } from "sonner"
 
 export function MatchView() {
   const searchParams = useSearchParams()
@@ -44,6 +46,7 @@ export function MatchView() {
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
   const [isSkillGapLoading, setIsSkillGapLoading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false)
   const [candidateLocation, setCandidateLocation] = useState<string>("")
   const locationInputRef = useRef<HTMLInputElement>(null)
 
@@ -176,6 +179,34 @@ export function MatchView() {
     setSkillGapResult(null)
   }
 
+  async function handleDownloadMatchPdf() {
+    if (!skillGapResult || !selectedResumeId || !selectedJobId) return
+    const resume = resumes.find((r) => r.id === selectedResumeId)
+    const job = jobs.find((j) => j.id === selectedJobId) ?? selectedJob
+    if (!job) return
+    const resumeName =
+      resume?.entities?.NAME?.[0] ?? `${selectedResumeId.slice(0, 8)}…`
+    const jobTitleStr = jobLabel(job)
+    setIsPdfDownloading(true)
+    try {
+      await downloadPdfDocument(
+        <MatchReportPdfDocument
+          resumeName={resumeName}
+          jobTitle={jobTitleStr}
+          payload={skillGapResult}
+          generatedAt={new Date().toLocaleString()}
+        />,
+        `${buildPdfFilenameBase("crackint-match", jobTitleStr, skillGapResult.analyzed_at ?? undefined)}.pdf`
+      )
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not generate PDF. Try again."
+      )
+    } finally {
+      setIsPdfDownloading(false)
+    }
+  }
+
   const jobLabel = (job: JobPosting) =>
     job.entities?.JOB_TITLE?.[0] ?? job.id.slice(0, 8) + "..."
 
@@ -286,22 +317,45 @@ export function MatchView() {
               </SelectContent>
             </Select>
           </div>
-          <Button
-            onClick={handleAnalyzeSkillGap}
-            disabled={!selectedResumeId || !selectedJobId || isSkillGapLoading || isAnalyzing}
-            className="h-11 rounded-xl px-6 shadow-sm"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : skillGapResult ? (
-              <>Re-analyse</>
-            ) : (
-              <>Analyze match</>
-            )}
-          </Button>
+          <div className="flex flex-wrap items-end gap-2">
+            <Button
+              onClick={handleAnalyzeSkillGap}
+              disabled={!selectedResumeId || !selectedJobId || isSkillGapLoading || isAnalyzing}
+              className="h-11 rounded-xl px-6 shadow-sm"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : skillGapResult ? (
+                <>Re-analyse</>
+              ) : (
+                <>Analyze match</>
+              )}
+            </Button>
+            {skillGapResult ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDownloadMatchPdf}
+                disabled={isPdfDownloading || isAnalyzing}
+                className="h-11 rounded-xl px-4 shadow-sm"
+              >
+                {isPdfDownloading ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    PDF…
+                  </>
+                ) : (
+                  <>
+                    <Download className="size-4" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+            ) : null}
+          </div>
         </div>
         {selectedJob && (
           <p className="mt-3 text-xs text-muted-foreground">

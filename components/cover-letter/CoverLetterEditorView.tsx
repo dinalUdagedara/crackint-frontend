@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { Loader2, ArrowLeft, FileText, Wand2, Sparkles, Trash2 } from "lucide-react"
+import { Loader2, ArrowLeft, FileText, Wand2, Sparkles, Trash2, Download } from "lucide-react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import {
   deleteCoverLetter,
@@ -25,6 +25,8 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
+import { downloadPdfDocument, buildPdfFilenameBase } from "@/components/pdf/download-pdf"
+import { CoverLetterPdfDocument } from "@/components/pdf/cover-letter-pdf"
 
 export function CoverLetterEditorView() {
   const searchParams = useSearchParams()
@@ -54,6 +56,7 @@ export function CoverLetterEditorView() {
   const [isDeleting, setIsDeleting] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false)
 
   // If we only have a session_id, try to infer resume/job IDs from the session
   useEffect(() => {
@@ -250,6 +253,29 @@ export function CoverLetterEditorView() {
 
   const company = job?.entities?.COMPANY?.[0] ?? job?.location ?? null
 
+  async function handleDownloadPdf() {
+    if (!content.trim()) return
+    setIsPdfDownloading(true)
+    try {
+      await downloadPdfDocument(
+        <CoverLetterPdfDocument
+          resumeName={resumeName}
+          jobTitle={jobTitle}
+          company={company}
+          content={content}
+          generatedAt={new Date().toLocaleString()}
+        />,
+        `${buildPdfFilenameBase("crackint-cover-letter", jobTitle)}.pdf`
+      )
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not generate PDF. Try again."
+      )
+    } finally {
+      setIsPdfDownloading(false)
+    }
+  }
+
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       <header className="border-b bg-background/80 backdrop-blur">
@@ -304,6 +330,26 @@ export function CoverLetterEditorView() {
                 <>
                   <FileText className="h-3 w-3" />
                   Copy letter
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1 text-xs"
+              onClick={handleDownloadPdf}
+              disabled={!content.trim() || isPdfDownloading}
+            >
+              {isPdfDownloading ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  PDF…
+                </>
+              ) : (
+                <>
+                  <Download className="h-3 w-3" />
+                  Download PDF
                 </>
               )}
             </Button>

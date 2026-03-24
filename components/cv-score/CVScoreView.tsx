@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { FileUp, FileCheck, Loader2, Sparkles, AlertCircle } from "lucide-react"
+import { FileUp, FileCheck, Loader2, Sparkles, AlertCircle, Download } from "lucide-react"
 import { AIExtractionLoader } from "@/components/cv-upload/AIExtractionLoader"
 import CVFileDropZone from "@/components/cv-upload/CVFileDropZone"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -33,6 +33,9 @@ import {
 } from "@/components/ui/card"
 import { ScoreResultCard } from "./ScoreResultCard"
 import { HeroGradientCard } from "@/components/ui/hero-gradient-card"
+import { downloadPdfDocument, buildPdfFilenameBase } from "@/components/pdf/download-pdf"
+import { CVScorePdfDocument } from "@/components/pdf/cv-score-pdf"
+import { toast } from "sonner"
 
 export default function CVScoreView() {
   const axiosAuth = useAxiosAuth()
@@ -47,6 +50,7 @@ export default function CVScoreView() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<CVScorePayload | null>(null)
   const [scoreSavedToResume, setScoreSavedToResume] = useState(false)
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false)
 
   const resumesQuery = useQuery({
     queryKey: ["resumes", "list", 1, 100],
@@ -127,6 +131,37 @@ export default function CVScoreView() {
 
   const canScoreFile = !!selectedFile && !isLoading
   const canScoreExisting = !!selectedResumeId && !isLoading && resumes.length > 0
+
+  const resumeLabelForPdf =
+    tab === "existing" && selectedResume
+      ? selectedResume.entities?.NAME?.[0] ?? `${selectedResumeId.slice(0, 8)}…`
+      : saveScoreToResumeId && saveScoreToResumeId !== SAVE_SCORE_NONE
+        ? resumes.find((r) => r.id === saveScoreToResumeId)?.entities?.NAME?.[0] ??
+          `${saveScoreToResumeId.slice(0, 8)}…`
+        : selectedFile
+          ? selectedFile.name.replace(/\.[^/.]+$/, "")
+          : null
+
+  async function handleDownloadScorePdf() {
+    if (!result) return
+    setIsPdfDownloading(true)
+    try {
+      await downloadPdfDocument(
+        <CVScorePdfDocument
+          payload={result}
+          resumeLabel={resumeLabelForPdf}
+          generatedAt={new Date().toLocaleString()}
+        />,
+        `${buildPdfFilenameBase("crackint-cv-score", resumeLabelForPdf ?? "score", result.scored_at ?? undefined)}.pdf`
+      )
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not generate PDF. Try again."
+      )
+    } finally {
+      setIsPdfDownloading(false)
+    }
+  }
 
   // When user selects a resume that already has a stored score, load the full result (breakdown, suggestions) from cache so they see it without clicking.
   useEffect(() => {
@@ -237,7 +272,9 @@ export default function CVScoreView() {
                             <SelectValue placeholder="Don't save — score only" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value={SAVE_SCORE_NONE}>Don't save</SelectItem>
+                            <SelectItem value={SAVE_SCORE_NONE}>
+                              {"Don't save"}
+                            </SelectItem>
                             {resumes.map((resume) => (
                               <SelectItem key={resume.id} value={resume.id}>
                                 {resume.entities?.NAME?.[0] ?? resume.id.slice(0, 8) + "..."}
@@ -355,14 +392,36 @@ export default function CVScoreView() {
           {result && (
             <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  Score result
-                  {scoreSavedToResume && (
-                    <span className="text-xs font-normal text-muted-foreground">
-                      (saved to resume)
-                    </span>
-                  )}
-                </CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    Score result
+                    {scoreSavedToResume && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        (saved to resume)
+                      </span>
+                    )}
+                  </CardTitle>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1 text-xs shrink-0"
+                    onClick={handleDownloadScorePdf}
+                    disabled={isPdfDownloading}
+                  >
+                    {isPdfDownloading ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        PDF…
+                      </>
+                    ) : (
+                      <>
+                        <Download className="size-3.5" />
+                        Download PDF
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <ScoreResultCard payload={result} />

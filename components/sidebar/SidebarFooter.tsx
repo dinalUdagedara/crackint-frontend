@@ -42,14 +42,15 @@ export function SidebarFooter() {
   const isAuthenticated = !!session
 
   const footerItems = [
-   
     { title: "CV Checker", href: "/cv-score", icon: FileCheck, type: "link" as const },
     { title: "CV Upload", href: "/cv-upload", icon: FileUp, type: "link" as const },
     { title: "My CVs", href: "/resumes", icon: FileText, type: "link" as const },
     { title: "Job Poster", href: "/job-upload", icon: ClipboardList, type: "link" as const },
     { title: "Job Tracker", href: "/job-postings", icon: List, type: "link" as const },
     { title: "CV vs job", href: "/match", icon: BarChart2, type: "link" as const },
-    { title: "Admin", href: "/admin", icon: LayoutDashboard, type: "link" as const },
+    ...(session?.user?.isAdmin
+      ? [{ title: "Admin", href: "/admin", icon: LayoutDashboard, type: "link" as const }]
+      : []),
   ]
 
   const accountLabel = isAuthenticated

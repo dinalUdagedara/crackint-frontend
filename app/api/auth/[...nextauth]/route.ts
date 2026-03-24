@@ -57,6 +57,7 @@ export const authOptions = {
             email: user.email,
             name: user.name,
             accessToken: access_token,
+            isAdmin: user.is_admin === true,
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : "Login failed."
@@ -90,6 +91,7 @@ export const authOptions = {
       if (user) {
         token.accessToken = user.accessToken
         token.id = user.id
+        token.isAdmin = user.isAdmin === true
         console.log("[auth] jwt callback: user present, id:", user.id)
       }
       // For Google OAuth: exchange id_token for backend JWT and store it
@@ -99,6 +101,7 @@ export const authOptions = {
           if (res.success && res.payload) {
             token.accessToken = res.payload.access_token
             token.id = res.payload.user.id
+            token.isAdmin = res.payload.user.is_admin === true
             console.log("[auth] jwt callback: Google login success, backend user id:", res.payload.user.id)
           }
         } catch (err) {
@@ -112,6 +115,7 @@ export const authOptions = {
       if (session.user) {
         session.accessToken = token.accessToken
         session.user.id = token.id ?? token.sub ?? undefined
+        session.user.isAdmin = token.isAdmin === true
         console.log("[auth] session callback: session populated, hasAccessToken:", !!token.accessToken)
       }
       return session

@@ -252,6 +252,8 @@ export interface User {
   email: string;
   name: string;
   created_at: string;
+  /** Present when backend includes it (e.g. login / me); used for admin UI gating. */
+  is_admin?: boolean;
 }
 
 export interface RegisterBody {
@@ -409,4 +411,46 @@ export interface UpdateCoverLetterBody {
 export interface CoverLetterDeletePayload {
   deleted: boolean;
 }
+
+// ---- Admin (GET/PATCH/DELETE /api/v1/admin/...) ----
+
+export type AdminUserListItem = {
+  id: string;
+  email: string;
+  name: string;
+  is_admin: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminUserListPayload = AdminUserListItem[];
+
+export type AdminUserUpdateBody = {
+  name?: string;
+  email?: string;
+};
+
+export type AdminUserDeletePayload = {
+  deleted_user_id: string;
+  prep_sessions_deleted: number;
+  cover_letters_deleted: number;
+  resumes_deleted: number;
+  job_postings_deleted: number;
+};
+
+export type AdminSessionListItem = {
+  id: string;
+  user_id: string | null;
+  user_email: string | null;
+  user_name: string | null;
+  resume_id: string | null;
+  job_posting_id: string | null;
+  mode: string;
+  status: string;
+  readiness_score: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminSessionListPayload = AdminSessionListItem[];
 

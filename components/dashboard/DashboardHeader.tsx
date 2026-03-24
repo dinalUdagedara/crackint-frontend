@@ -3,6 +3,7 @@
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import { useSession, signOut, signIn } from "next-auth/react"
+import Link from "next/link"
 import { User } from "lucide-react"
 import {
   Breadcrumb,
@@ -86,6 +87,12 @@ function getBreadcrumbs(pathname: string): BreadcrumbSegment[] {
       { label: "Admin", href: null },
     ]
   }
+  if (pathname === "/profile") {
+    return [
+      { label: "Home", href: "/" },
+      { label: "Profile", href: null },
+    ]
+  }
   return [{ label: "Home", href: "/" }, { label: pathname.slice(1), href: null }]
 }
 
@@ -158,14 +165,19 @@ export function DashboardHeader() {
                 )}
                 <DropdownMenuSeparator />
                 {isAuthenticated ? (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => {
-                      void signOut({ callbackUrl: "/", redirect: true })
-                    }}
-                  >
-                    Sign out
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        void signOut({ callbackUrl: "/", redirect: true })
+                      }}
+                    >
+                      Sign out
+                    </DropdownMenuItem>
+                  </>
                 ) : (
                   <>
                     <DropdownMenuItem

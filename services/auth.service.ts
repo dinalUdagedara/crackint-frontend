@@ -1,4 +1,11 @@
-import type { ApiResponse, LoginBody, LoginPayload, RegisterBody, User } from "@/types/api.types"
+import type {
+  ApiResponse,
+  LoginBody,
+  LoginPayload,
+  RegisterBody,
+  User,
+  UserProfileUpdateBody,
+} from "@/types/api.types"
 import { handle401 } from "@/lib/api-client"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
@@ -78,6 +85,26 @@ export async function googleLogin(idToken: string): Promise<ApiResponse<LoginPay
 export async function getMe(accessToken: string): Promise<ApiResponse<User>> {
   const res = await fetch(`${AUTH_BASE}/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  return parseResponse<User>(res)
+}
+
+/**
+ * Update the signed-in user (partial body; at least one field).
+ * Backend: PATCH /api/v1/auth/me — see backend `docs/ADMIN_AND_USER_PROFILE.md`.
+ * Profile UI sends `name`, `profile_image_url`, or both (not `email`).
+ */
+export async function patchMe(
+  accessToken: string,
+  body: UserProfileUpdateBody
+): Promise<ApiResponse<User>> {
+  const res = await fetch(`${AUTH_BASE}/me`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
   })
   return parseResponse<User>(res)
 }

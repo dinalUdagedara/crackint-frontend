@@ -254,6 +254,8 @@ export interface User {
   created_at: string;
   /** Present when backend includes it (e.g. login / me); used for admin UI gating. */
   is_admin?: boolean;
+  /** Public avatar URL from S3, or null if unset. See backend docs (UserRead). */
+  profile_image_url?: string | null;
 }
 
 export interface RegisterBody {
@@ -265,6 +267,16 @@ export interface RegisterBody {
 export interface LoginBody {
   email: string;
   password: string;
+}
+
+/**
+ * PATCH /api/v1/auth/me — at least one field required (backend partial update).
+ * The profile UI sends `name` and/or `profile_image_url` (not email).
+ */
+export interface UserProfileUpdateBody {
+  name?: string;
+  email?: string;
+  profile_image_url?: string | null;
 }
 
 export interface LoginPayload {
@@ -419,6 +431,7 @@ export type AdminUserListItem = {
   email: string;
   name: string;
   is_admin: boolean;
+  profile_image_url?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -428,6 +441,7 @@ export type AdminUserListPayload = AdminUserListItem[];
 export type AdminUserUpdateBody = {
   name?: string;
   email?: string;
+  profile_image_url?: string | null;
 };
 
 export type AdminUserDeletePayload = {

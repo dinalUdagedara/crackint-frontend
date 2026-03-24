@@ -58,6 +58,7 @@ export const authOptions = {
             name: user.name,
             accessToken: access_token,
             isAdmin: user.is_admin === true,
+            profileImageUrl: user.profile_image_url ?? null,
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : "Login failed."
@@ -87,12 +88,22 @@ export const authOptions = {
   },
   callbacks: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async jwt({ token, user, account }: any) {
+    async jwt({ token, user, account, trigger, session }: any) {
       if (user) {
         token.accessToken = user.accessToken
         token.id = user.id
         token.isAdmin = user.isAdmin === true
+        token.name = user.name
+        token.email = user.email
+        token.profileImageUrl = user.profileImageUrl ?? null
         console.log("[auth] jwt callback: user present, id:", user.id)
+      }
+      if (trigger === "update" && session) {
+        if (typeof session.name === "string") token.name = session.name
+        if (typeof session.email === "string") token.email = session.email
+        if (session.profileImageUrl !== undefined) {
+          token.profileImageUrl = session.profileImageUrl
+        }
       }
       // For Google OAuth: exchange id_token for backend JWT and store it
       if (account?.provider === "google" && account.id_token) {
@@ -102,6 +113,9 @@ export const authOptions = {
             token.accessToken = res.payload.access_token
             token.id = res.payload.user.id
             token.isAdmin = res.payload.user.is_admin === true
+            token.name = res.payload.user.name
+            token.email = res.payload.user.email
+            token.profileImageUrl = res.payload.user.profile_image_url ?? null
             console.log("[auth] jwt callback: Google login success, backend user id:", res.payload.user.id)
           }
         } catch (err) {
@@ -116,6 +130,11 @@ export const authOptions = {
         session.accessToken = token.accessToken
         session.user.id = token.id ?? token.sub ?? undefined
         session.user.isAdmin = token.isAdmin === true
+        if (typeof token.name === "string") session.user.name = token.name
+        if (typeof token.email === "string") session.user.email = token.email
+        if (token.profileImageUrl !== undefined) {
+          session.user.profileImageUrl = token.profileImageUrl as string | null
+        }
         console.log("[auth] session callback: session populated, hasAccessToken:", !!token.accessToken)
       }
       return session

@@ -15,6 +15,7 @@ import {
   LogOut,
   Trash2,
   User,
+  UserRound,
 } from "lucide-react"
 import {
   SidebarFooter as UISidebarFooter,
@@ -51,6 +52,8 @@ export function SidebarFooter() {
     ...(session?.user?.isAdmin
       ? [{ title: "Admin", href: "/admin", icon: LayoutDashboard, type: "link" as const }]
       : []),
+    { title: "Profile", href: "/profile", icon: UserRound, type: "link" as const },
+
   ]
 
   const accountLabel = isAuthenticated
@@ -72,7 +75,7 @@ export function SidebarFooter() {
                 className={cn(
                   "pr-2",
                   isActive &&
-                    "bg-sidebar-primary/20 text-foreground border-l-2 border-sidebar-primary rounded-l-md data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-foreground"
+                  "bg-sidebar-primary/20 text-foreground border-l-2 border-sidebar-primary rounded-l-md data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-foreground"
                 )}
               >
                 <Link href={item.href}>

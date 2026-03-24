@@ -15,7 +15,7 @@ import {
   listAdminUsers,
   patchAdminUser,
 } from "@/services/admin.service"
-import type { AdminUserListItem } from "@/types/api.types"
+import type { AdminUserListItem, AdminUserUpdateBody } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -69,6 +69,7 @@ export function AdminUsersPanel() {
   const [editUser, setEditUser] = useState<AdminUserListItem | null>(null)
   const [editName, setEditName] = useState("")
   const [editEmail, setEditEmail] = useState("")
+  const [editProfileImageUrl, setEditProfileImageUrl] = useState("")
 
   const [deleteTarget, setDeleteTarget] = useState<AdminUserListItem | null>(
     null
@@ -87,7 +88,7 @@ export function AdminUsersPanel() {
       body,
     }: {
       id: string
-      body: { name?: string; email?: string }
+      body: AdminUserUpdateBody
     }) => {
       const res = await patchAdminUser(axiosAuth, id, body)
       if (!res.success || !res.payload) {
@@ -134,14 +135,20 @@ export function AdminUsersPanel() {
     setEditUser(u)
     setEditName(u.name)
     setEditEmail(u.email)
+    setEditProfileImageUrl(u.profile_image_url ?? "")
     setEditOpen(true)
   }
 
   function submitEdit() {
     if (!editUser) return
-    const body: { name?: string; email?: string } = {}
+    const body: AdminUserUpdateBody = {}
     if (editName.trim() !== editUser.name) body.name = editName.trim()
     if (editEmail.trim() !== editUser.email) body.email = editEmail.trim()
+    const nextPic = editProfileImageUrl.trim()
+    const prevPic = editUser.profile_image_url ?? ""
+    if (nextPic !== prevPic) {
+      body.profile_image_url = nextPic === "" ? null : nextPic
+    }
     if (Object.keys(body).length === 0) {
       toast.message("No changes to save.")
       return
@@ -215,6 +222,9 @@ export function AdminUsersPanel() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/30">
+                  <th className="w-12 px-2 py-3 text-left font-medium text-muted-foreground">
+                    {/* avatar */}
+                  </th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                     Email
                   </th>
@@ -238,6 +248,22 @@ export function AdminUsersPanel() {
                     key={u.id}
                     className="border-b border-border/60 last:border-0 transition-colors hover:bg-muted/20"
                   >
+                    <td className="px-2 py-2">
+                      <div className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-muted">
+                        {u.profile_image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={u.profile_image_url}
+                            alt=""
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">{u.email}</td>
                     <td className="px-4 py-3">{u.name}</td>
                     <td className="px-4 py-3">
@@ -334,6 +360,20 @@ export function AdminUsersPanel() {
                 onChange={(e) => setEditEmail(e.target.value)}
                 className="rounded-xl"
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="admin-edit-pic">Profile image URL</Label>
+              <Input
+                id="admin-edit-pic"
+                type="url"
+                placeholder="https://… or clear to remove"
+                value={editProfileImageUrl}
+                onChange={(e) => setEditProfileImageUrl(e.target.value)}
+                className="rounded-xl font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                Set empty and save to clear the picture (sends null).
+              </p>
             </div>
           </div>
           <DialogFooter>

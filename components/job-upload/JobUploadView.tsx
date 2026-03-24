@@ -116,6 +116,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
         user_id: null,
         entities: result.entities ?? {},
         raw_text: result.raw_text ?? null,
+        source_file_url: result.source_file_url ?? null,
         location,
         deadline: null,
       })

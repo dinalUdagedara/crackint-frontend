@@ -27,6 +27,8 @@ function throwOnAxiosError(e: unknown): never {
 
 /** `cover` = job cover images; `profile` = user avatars (S3 prefix uploads/profile-images). */
 export type ImageUploadPurpose = "cover" | "profile"
+/** `resume` and `job` are for source document persistence. */
+export type DocumentUploadPurpose = "resume" | "job"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const MAX_SIZE_MB = 5
@@ -88,4 +90,35 @@ export async function uploadProfileImage(
   file: File
 ): Promise<string> {
   return uploadImage(axiosAuth, file, "profile")
+}
+
+/**
+ * Upload a source document manually and get its S3 URL.
+ * Backend: POST /uploads/document?purpose=resume|job, multipart field `file`.
+ */
+export async function uploadDocument(
+  axiosAuth: AxiosInstance,
+  file: File,
+  purpose: DocumentUploadPurpose
+): Promise<string> {
+  const formData = new FormData()
+  formData.append("file", file)
+
+  try {
+    const { data } = await axiosAuth.post<
+      ApiResponse<{ url: string }>
+    >("/uploads/document", formData, {
+      params: { purpose },
+      headers: { "Content-Type": undefined },
+      timeout: 60000,
+    })
+    if (!data.success || !data.payload?.url) {
+      throw new UploadError(
+        (data as ApiResponse<unknown>).message ?? "Upload failed."
+      )
+    }
+    return data.payload.url
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }

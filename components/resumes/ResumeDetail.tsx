@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft, Pencil, Trash2 } from "lucide-react"
+import { Loader2, ArrowLeft, Pencil, Trash2, ExternalLink } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getResume, deleteResume } from "@/services/resume-uploader.service"
@@ -142,6 +142,22 @@ export function ResumeDetail() {
               </p>
             </div>
             <div className="flex gap-2">
+              {resume.source_file_url && (
+                <Button
+                  asChild
+                  variant="secondary"
+                  size="sm"
+                >
+                  <a
+                    href={resume.source_file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View uploaded file
+                    <ExternalLink className="ml-2 size-4" />
+                  </a>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -175,6 +191,23 @@ export function ResumeDetail() {
                 <div className="flex gap-2">
                   <dt className="w-24 text-xs text-muted-foreground">Updated</dt>
                   <dd className="text-foreground">{formatDate(resume.updated_at)}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-24 text-xs text-muted-foreground">Source file</dt>
+                  <dd className="text-foreground">
+                    {resume.source_file_url ? (
+                      <a
+                        href={resume.source_file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        Open original upload
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">Not available</span>
+                    )}
+                  </dd>
                 </div>
               </dl>
             </div>

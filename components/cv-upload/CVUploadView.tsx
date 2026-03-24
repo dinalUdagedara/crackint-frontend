@@ -39,12 +39,14 @@ import { ExtractedEntitiesCard } from "./ExtractedEntitiesCard"
 import { HeroGradientCard } from "@/components/ui/hero-gradient-card"
 
 function toResume(result: ResumeExtractResult): Resume | null {
-  if (!result.id) return null
+  const persistedId = result.id ?? result.resume_id
+  if (!persistedId) return null
   return {
-    id: result.id,
+    id: persistedId,
     user_id: result.user_id ?? null,
     entities: result.entities ?? {},
     raw_text: result.raw_text ?? null,
+    source_file_url: result.source_file_url ?? null,
     created_at: result.created_at ?? new Date().toISOString(),
     updated_at: result.updated_at ?? new Date().toISOString(),
   }
@@ -258,6 +260,7 @@ export default function CVUploadView() {
                     user_id: null,
                     entities: result!.entities ?? {},
                     raw_text: result!.raw_text ?? null,
+                    source_file_url: result!.source_file_url ?? null,
                     created_at: "",
                     updated_at: "",
                   }

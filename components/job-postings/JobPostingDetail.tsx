@@ -491,6 +491,29 @@ export function JobPostingDetail() {
             isDeleting={isDeleting}
           />
 
+          {job.source_file_url && (
+            <div className="rounded-lg border border-border/60 bg-muted/10 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium">Uploaded source file</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Open the original document/image uploaded for this job posting.
+                  </p>
+                </div>
+                <Button asChild size="sm" variant="outline" className="gap-2">
+                  <a
+                    href={job.source_file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View uploaded file
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Practice block */}
           <div className="rounded-lg border border-border/60 bg-muted/10 p-4">
             <h3 className="mb-3 text-sm font-medium">Practice</h3>

@@ -24,6 +24,8 @@ export type ResumeEntityKey =
 export interface ResumeExtractPayload {
   entities: Record<string, string[]>;
   raw_text: string | null;
+  /** S3 URL of uploaded source file (null for text-only extraction or S3 fallback). */
+  source_file_url?: string | null;
 }
 
 /** Full resume from API (persisted) */
@@ -32,6 +34,8 @@ export interface Resume {
   user_id: string | null;
   entities: Record<string, string[]>;
   raw_text: string | null;
+  /** S3 URL for the original uploaded resume file, if available. */
+  source_file_url?: string | null;
   /** Latest CV score (0–100) if ever computed. */
   cv_score?: number | null;
   /** When the CV score was computed (ISO datetime). */
@@ -40,8 +44,11 @@ export interface Resume {
   updated_at: string;
 }
 
-/** Payload from POST extract - may include id if persisted */
-export type ResumeExtractResult = ResumeExtractPayload & Partial<Pick<Resume, "id" | "user_id" | "created_at" | "updated_at">>;
+/** Payload from POST extract - backend may return either `id` or `resume_id`. */
+export type ResumeExtractResult = ResumeExtractPayload &
+  Partial<Pick<Resume, "id" | "user_id" | "created_at" | "updated_at">> & {
+    resume_id?: string;
+  };
 
 /** Response payload for GET /resumes - array of resumes */
 export type ResumeListPayload = Resume[];
@@ -50,6 +57,8 @@ export type ResumeListPayload = Resume[];
 export interface JobExtractPayload {
   entities: Record<string, string[]>;
   raw_text: string | null;
+  /** S3 URL of uploaded source file (null for text-only extraction or S3 fallback). */
+  source_file_url?: string | null;
 }
 
 // ---- Job postings ----
@@ -66,6 +75,8 @@ export interface JobPosting {
   /** User-defined display order (lower = earlier). */
   display_order?: number | null;
   cover_image_url?: string | null;
+  /** S3 URL for the original uploaded job document/image, if available. */
+  source_file_url?: string | null;
   notes?: string | null;
   questions_to_ask?: string | null;
   interview_at?: string | null;
@@ -95,6 +106,7 @@ export interface JobPostingCreate {
   location: string | null;
   deadline: string | null;
   cover_image_url?: string | null;
+  source_file_url?: string | null;
   notes?: string | null;
   questions_to_ask?: string | null;
   interview_at?: string | null;
@@ -113,6 +125,7 @@ export interface JobPostingUpdate {
   deadline?: string | null;
   display_order?: number | null;
   cover_image_url?: string | null;
+  source_file_url?: string | null;
   notes?: string | null;
   questions_to_ask?: string | null;
   interview_at?: string | null;

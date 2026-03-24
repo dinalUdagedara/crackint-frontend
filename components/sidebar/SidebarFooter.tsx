@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { UserAvatar } from "@/components/common/UserAvatar"
 import { signIn, signOut, useSession } from "next-auth/react"
 import {
   BarChart2,
@@ -96,10 +97,20 @@ export function SidebarFooter() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className={cn(sidebarTriggerClass)}
+                  className={cn(sidebarTriggerClass, "gap-2")}
                   aria-label={isAuthenticated ? "Account menu" : "Sign in"}
                 >
-                  <User />
+                  {isAuthenticated ? (
+                    <UserAvatar
+                      imageUrl={session?.user?.profileImageUrl}
+                      name={session?.user?.name}
+                      email={session?.user?.email}
+                      size="sm"
+                      className="shrink-0 ring-sidebar-border"
+                    />
+                  ) : (
+                    <User />
+                  )}
                   <TruncatedText
                     text={accountLabel}
                     maxChars={18}
@@ -120,15 +131,20 @@ export function SidebarFooter() {
                 )}
                 <DropdownMenuSeparator />
                 {isAuthenticated ? (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => {
-                      void signOut({ callbackUrl: "/", redirect: true })
-                    }}
-                  >
-                    <LogOut className="size-4" />
-                    Log out
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        void signOut({ callbackUrl: "/", redirect: true })
+                      }}
+                    >
+                      <LogOut className="size-4" />
+                      Log out
+                    </DropdownMenuItem>
+                  </>
                 ) : (
                   <>
                     <DropdownMenuItem

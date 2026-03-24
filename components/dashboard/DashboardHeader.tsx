@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useSession, signOut, signIn } from "next-auth/react"
 import Link from "next/link"
 import { User } from "lucide-react"
+import { UserAvatar } from "@/components/common/UserAvatar"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -146,10 +147,20 @@ export function DashboardHeader() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="rounded-full"
+                  className="rounded-full overflow-hidden p-0"
                   aria-label={isAuthenticated ? "Account menu" : "Sign in"}
                 >
-                  <User className="size-4" />
+                  {isAuthenticated ? (
+                    <UserAvatar
+                      imageUrl={session.user?.profileImageUrl}
+                      name={session.user?.name}
+                      email={session.user?.email}
+                      size="md"
+                      className="size-full rounded-full ring-0"
+                    />
+                  ) : (
+                    <User className="size-4" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">

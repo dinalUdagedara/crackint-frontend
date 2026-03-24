@@ -32,6 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { UserAvatar } from "@/components/common/UserAvatar"
 
 function formatDate(iso: string): string {
   try {
@@ -44,7 +45,7 @@ function formatDate(iso: string): string {
 export function SessionChatView() {
   const params = useParams<{ id: string }>()
   const sessionId = params?.id
-  const { status: sessionStatus } = useSession()
+  const { data: authSession, status: sessionStatus } = useSession()
   const axiosAuth = useAxiosAuth()
 
   const [session, setSession] = useState<PrepSessionWithMessages | null>(
@@ -367,6 +368,15 @@ export function SessionChatView() {
               </div>
               <div className="flex flex-col items-end gap-1 text-[11px] text-muted-foreground">
                 <div className="flex items-center gap-2">
+                  {authSession?.user && (
+                    <UserAvatar
+                      imageUrl={authSession.user.profileImageUrl}
+                      name={authSession.user.name}
+                      email={authSession.user.email}
+                      size="xs"
+                      className="ring-border/70"
+                    />
+                  )}
                   <div className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">
                     <span
                       className="h-1.5 w-1.5 rounded-full"
@@ -504,6 +514,9 @@ export function SessionChatView() {
         session={session}
         messagesEndRef={messagesEndRef}
         pendingMessage={pendingMessage}
+        userAvatarUrl={authSession?.user?.profileImageUrl}
+        userName={authSession?.user?.name}
+        userEmail={authSession?.user?.email}
       />
 
       <ChatInputView

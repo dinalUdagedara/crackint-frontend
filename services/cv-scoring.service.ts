@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from "axios"
+import { getResumeOrJobUploadFileError } from "@/lib/upload-file-validation"
 import type { ApiResponse, CVScorePayload } from "@/types/api.types"
 
 export class CVScoringError extends Error {
@@ -27,19 +28,16 @@ function throwOnAxiosError(e: unknown): never {
   throw e
 }
 
-/** Score a CV from file upload (PDF or image). Backend passes to LLM vision.
+/** Score a CV from file upload. PDF/image use vision; DOCX uses text-based scoring on the backend.
  * If resumeId is provided and the resume is owned by the user, the score is saved on that resume. */
 export async function scoreResumeFromFile(
   axiosAuth: AxiosInstance,
   file: File,
   resumeId?: string
 ): Promise<ApiResponse<CVScorePayload>> {
-  const isSupported =
-    file.type === "application/pdf" || file.type.startsWith("image/")
-  if (!isSupported) {
-    throw new CVScoringError(
-      "Only PDF and image files (PNG, JPEG, WebP) are supported."
-    )
+  const typeErr = getResumeOrJobUploadFileError(file)
+  if (typeErr) {
+    throw new CVScoringError(typeErr)
   }
   const formData = new FormData()
   formData.append("file", file)

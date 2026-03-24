@@ -148,7 +148,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                   Upload job poster
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Upload a PDF or image of the job poster, or paste the job
+                  Upload a PDF, Word (.docx), or image of the job poster, or paste the job
                   description text. We&apos;ll extract key information for interview prep.
                 </p>
               </div>
@@ -324,7 +324,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
               <CardHeader className="pb-4">
                 <CardTitle className="text-base">How would you like to add your job poster?</CardTitle>
                 <CardDescription>
-                  Upload a PDF or image, or paste the job description text. We&apos;ll extract key information for interview prep.
+                  Upload a PDF, Word (.docx), or image, or paste the job description text. We&apos;ll extract key information for interview prep.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -359,7 +359,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                           onFileSelect={handleFileSelect}
                         />
                         <p className="text-xs text-muted-foreground">
-                          PDF or images (PNG, JPEG, WebP) up to 5 MB.
+                          PDF, Word (.docx), or images (PNG, JPEG, WebP) up to 10 MB. Legacy .doc is not supported.
                         </p>
                       </TabsContent>
                       <TabsContent value="paste" className="mt-5 space-y-1.5">

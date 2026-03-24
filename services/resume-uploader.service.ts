@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from "axios"
+import { getResumeOrJobUploadFileError } from "@/lib/upload-file-validation"
 import type {
   ApiResponse,
   Resume,
@@ -29,18 +30,15 @@ function throwOnAxiosError(e: unknown): never {
   throw e
 }
 
-/** Extract resume entities from a PDF or image file. Backend accepts PDF and images (PNG, JPEG, WebP). */
+/** Extract resume entities from a PDF, Word (.docx), or image file. See `upload-file-validation`. */
 export async function extractResumeFromFile(
   axiosAuth: AxiosInstance,
   file: File,
   useEnhancedExtraction = false
 ): Promise<ApiResponse<ResumeExtractResult>> {
-  const isSupported =
-    file.type === "application/pdf" || file.type.startsWith("image/")
-  if (!isSupported) {
-    throw new ResumeUploadError(
-      "Only PDF and image files (PNG, JPEG, WebP) are supported. Please paste your CV text instead."
-    )
+  const typeErr = getResumeOrJobUploadFileError(file)
+  if (typeErr) {
+    throw new ResumeUploadError(typeErr)
   }
   const formData = new FormData()
   formData.append("file", file)

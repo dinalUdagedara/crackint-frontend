@@ -3,9 +3,11 @@
 import { useCallback, useId, useState } from "react"
 import { FileUp, FileText, Image } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getResumeOrJobUploadFileError } from "@/lib/upload-file-validation"
 
-const ACCEPTED_TYPES = ".pdf,image/*"
-const MAX_FILE_SIZE_MB = 5
+/** Matches backend default `MAX_UPLOAD_SIZE_MB` for extract routes (see `docs/DOCX_UPLOAD.md`). */
+const ACCEPTED_TYPES = ".pdf,.docx,image/*"
+const MAX_FILE_SIZE_MB = 10
 
 type CVFileDropZoneProps = {
   onFileSelect?: (file: File | null) => void
@@ -25,13 +27,8 @@ export default function CVFileDropZone({
   const [error, setError] = useState<string | null>(null)
 
   const validateFile = useCallback((file: File): string | null => {
-    const isPDF = file.type === "application/pdf"
-    const isImage = file.type.startsWith("image/")
-    if (!isPDF && !isImage) {
-      return variant === "job"
-        ? "Please upload a PDF or image file (PNG, JPEG, WebP)."
-        : "Please upload a PDF or image file."
-    }
+    const typeErr = getResumeOrJobUploadFileError(file)
+    if (typeErr) return typeErr
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       return `File size must be less than ${MAX_FILE_SIZE_MB}MB.`
     }
@@ -115,7 +112,7 @@ export default function CVFileDropZone({
               : "Drop your CV here or click to browse"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            PDF or images up to {MAX_FILE_SIZE_MB}MB
+            PDF, Word (.docx), or images — up to {MAX_FILE_SIZE_MB}MB (not legacy .doc)
           </p>
         </div>
         <input

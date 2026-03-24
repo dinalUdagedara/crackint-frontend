@@ -378,7 +378,7 @@ export default function CVUploadView() {
                         <Label className="text-sm font-medium">Upload your CV</Label>
                         <CVFileDropZone onFileSelect={handleFileSelect} />
                         <p className="text-xs text-muted-foreground">
-                          PDF or images (PNG, JPEG, WebP) up to 5 MB.
+                          PDF, Word (.docx), or images (PNG, JPEG, WebP) up to 10 MB. Legacy .doc is not supported.
                         </p>
                       </TabsContent>
                       <TabsContent value="paste" className="mt-5 space-y-1.5">

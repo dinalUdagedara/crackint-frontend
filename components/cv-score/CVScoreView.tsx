@@ -221,7 +221,7 @@ export default function CVScoreView() {
                         <Label className="text-sm font-medium">Upload your CV</Label>
                         <CVFileDropZone onFileSelect={setSelectedFile} />
                         <p className="text-xs text-muted-foreground">
-                          PDF or images (PNG, JPEG, WebP) up to 5 MB.
+                          PDF, Word (.docx), or images (PNG, JPEG, WebP) up to 10 MB. Legacy .doc is not supported.
                         </p>
                       </div>
                       <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-2">

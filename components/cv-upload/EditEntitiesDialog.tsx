@@ -104,7 +104,7 @@ export function EditEntitiesDialog({
           <DialogHeader>
             <DialogTitle>Edit extracted information</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 px-1">
             {error && (
               <p
                 role="alert"

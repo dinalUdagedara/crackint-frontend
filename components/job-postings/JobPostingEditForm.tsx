@@ -325,7 +325,7 @@ export function JobPostingEditForm({
 
       <div className="grid gap-6">
         {/* Job details card */}
-        <div className="rounded-xl border border-border/60 bg-muted/10">
+        <div className="rounded-xl border border-border/60 bg-background">
           <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Briefcase className="size-4" />
@@ -385,7 +385,7 @@ export function JobPostingEditForm({
         </div>
 
         {otherEntityEntries.length > 0 && (
-          <div className="rounded-xl border border-border/60 bg-muted/10">
+          <div className="rounded-xl border border-border/60 bg-background">
             <div className="border-b border-border/60 px-4 py-3">
               <span className="text-sm font-medium text-foreground">
                 Other extracted fields
@@ -410,7 +410,7 @@ export function JobPostingEditForm({
         )}
 
         {/* Raw job description card */}
-        <div className="rounded-xl border border-border/60 bg-muted/10">
+        <div className="rounded-xl border border-border/60 bg-background">
           <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <FileText className="size-4" />
@@ -459,7 +459,7 @@ export function JobPostingEditForm({
           )}
 
           {/* Notes */}
-          <div className="rounded-xl border border-border/60 bg-muted/10 sm:col-span-2 lg:col-span-3">
+          <div className="rounded-xl border border-border/60 bg-background sm:col-span-2 lg:col-span-3">
             <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <FileText className="size-4" />
@@ -484,7 +484,7 @@ export function JobPostingEditForm({
           </div>
 
           {/* Questions to ask */}
-          <div className="rounded-xl border border-border/60 bg-muted/10 sm:col-span-2">
+          <div className="rounded-xl border border-border/60 bg-background sm:col-span-2">
             <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <HelpCircle className="size-4" />
@@ -508,7 +508,7 @@ export function JobPostingEditForm({
           </div>
 
           {/* Talking points */}
-          <div className="rounded-xl border border-border/60 bg-muted/10">
+          <div className="rounded-xl border border-border/60 bg-background">
             <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <MessageSquare className="size-4" />
@@ -532,7 +532,7 @@ export function JobPostingEditForm({
           </div>
 
           {/* Contact */}
-          <div className="rounded-xl border border-border/60 bg-muted/10">
+          <div className="rounded-xl border border-border/60 bg-background">
             <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <User className="size-4" />
@@ -569,7 +569,7 @@ export function JobPostingEditForm({
           </div>
 
           {/* Application URL */}
-          <div className="rounded-xl border border-border/60 bg-muted/10">
+          <div className="rounded-xl border border-border/60 bg-background">
             <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Link2 className="size-4" />
@@ -593,7 +593,7 @@ export function JobPostingEditForm({
           </div>
 
           {/* Interview date */}
-          <div className="rounded-xl border border-border/60 bg-muted/10">
+          <div className="rounded-xl border border-border/60 bg-background">
             <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Calendar className="size-4" />
@@ -616,7 +616,7 @@ export function JobPostingEditForm({
           </div>
 
           {/* Stage */}
-          <div className="rounded-xl border border-border/60 bg-muted/10">
+          <div className="rounded-xl border border-border/60 bg-background">
             <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Flag className="size-4" />

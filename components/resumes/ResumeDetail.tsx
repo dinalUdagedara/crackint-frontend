@@ -179,7 +179,7 @@ export function ResumeDetail() {
           </div>
 
           <div className="grid gap-4 text-sm md:grid-cols-2">
-            <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
+            <div className="space-y-2 rounded-lg border bg-background p-4">
               <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Meta
               </h2>
@@ -212,7 +212,7 @@ export function ResumeDetail() {
               </dl>
             </div>
 
-            <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
+            <div className="space-y-2 rounded-lg border bg-background p-4">
               <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Extracted fields
               </h2>
@@ -250,7 +250,7 @@ export function ResumeDetail() {
 
           <div className="space-y-2">
             <h2 className="text-sm font-medium">Raw CV text</h2>
-            <div className="rounded-lg border bg-muted/10 p-4 text-sm whitespace-pre-wrap">
+            <div className="rounded-lg border bg-background p-4 text-sm whitespace-pre-wrap">
               {resume.raw_text ? (
                 resume.raw_text
               ) : (

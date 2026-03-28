@@ -13,7 +13,7 @@ export function AIExtractionLoader({ message = "Analyzing your resume" }: AIExtr
       aria-label="Extracting information"
       className="flex flex-col items-center justify-center gap-4 rounded-xl border bg-muted/30 px-8 py-10 backdrop-blur-sm"
     >
-      {/* Bouncing dots - ChatGPT style */}
+      {/* Bouncing dots loading indicator */}
       <div className="flex items-center gap-1.5">
         <span
           className="size-2 rounded-full bg-primary animate-bounce [animation-delay:0ms] animation-duration-[0.6s]"

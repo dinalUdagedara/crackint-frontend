@@ -1,0 +1,154 @@
+import { Document, Page, Text, View } from "@react-pdf/renderer"
+import type { SkillGapPayload } from "@/types/api.types"
+import { pdfStyles } from "./styles"
+
+function BulletList({ items }: { items: string[] }) {
+  if (!items.length) return null
+  return (
+    <View>
+      {items.map((line, i) => (
+        <View key={i} style={pdfStyles.bullet} wrap={false}>
+          <Text style={pdfStyles.bulletDot}>• </Text>
+          <Text style={pdfStyles.bulletText}>{line}</Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+export interface MatchReportPdfDocumentProps {
+  resumeName: string
+  jobTitle: string
+  payload: SkillGapPayload
+  generatedAt?: string
+}
+
+export function MatchReportPdfDocument({
+  resumeName,
+  jobTitle,
+  payload,
+  generatedAt,
+}: MatchReportPdfDocumentProps) {
+  const analyzed =
+    payload.analyzed_at != null
+      ? (() => {
+          try {
+            return new Date(payload.analyzed_at).toLocaleString()
+          } catch {
+            return payload.analyzed_at
+          }
+        })()
+      : null
+
+  const loc = payload.location_suitability
+
+  return (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <Text style={pdfStyles.title}>CV vs job analysis</Text>
+        <Text style={pdfStyles.subtitle}>Crackint — exported report</Text>
+
+        <Text style={pdfStyles.metaRow}>Resume: {resumeName}</Text>
+        <Text style={pdfStyles.metaRow}>Job: {jobTitle}</Text>
+        {analyzed ? (
+          <Text style={pdfStyles.metaRow}>Analyzed: {analyzed}</Text>
+        ) : null}
+        {generatedAt ? (
+          <Text style={pdfStyles.metaRow}>Exported: {generatedAt}</Text>
+        ) : null}
+
+        <Text style={pdfStyles.sectionTitle}>Overall</Text>
+        <Text style={pdfStyles.body}>
+          Severity: {payload.severity}
+          {payload.missing_skills.length
+            ? ` · Missing skills listed: ${payload.missing_skills.length}`
+            : ""}
+        </Text>
+
+        {payload.llm_fit_analysis ? (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Fit analysis</Text>
+            <Text style={pdfStyles.body}>
+              Fit score: {Math.round(payload.llm_fit_analysis.fit_score)} / 100
+            </Text>
+            <Text style={[pdfStyles.body, { marginTop: 6 }]}>
+              {payload.llm_fit_analysis.summary}
+            </Text>
+            {payload.llm_fit_analysis.tailored_suggestions?.length ? (
+              <>
+                <Text style={[pdfStyles.sectionTitle, { marginTop: 8 }]}>
+                  Tailored suggestions
+                </Text>
+                <BulletList items={payload.llm_fit_analysis.tailored_suggestions} />
+              </>
+            ) : null}
+          </>
+        ) : null}
+
+        {payload.missing_skills.length > 0 ? (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Missing skills</Text>
+            <BulletList items={payload.missing_skills} />
+          </>
+        ) : null}
+
+        {payload.suggestions.length > 0 ? (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Suggestions</Text>
+            <BulletList items={payload.suggestions} />
+          </>
+        ) : null}
+
+        {payload.alerts.length > 0 ? (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Alerts</Text>
+            {payload.alerts.map((a, i) => (
+              <Text key={i} style={[pdfStyles.body, { marginBottom: 4 }]}>
+                [{a.severity}] {a.type}: {a.message}
+              </Text>
+            ))}
+          </>
+        ) : null}
+
+        {loc ? (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Location</Text>
+            <Text style={pdfStyles.body}>
+              Job: {loc.job_location_display ?? "—"}
+              {loc.is_remote ? " (remote)" : ""}
+            </Text>
+            <Text style={pdfStyles.body}>Your location: {loc.candidate_location ?? "—"}</Text>
+            <Text style={pdfStyles.body}>
+              Suitability: {loc.suitability}
+              {loc.highlight_remote_match ? " · Remote match highlighted" : ""}
+            </Text>
+            <Text style={[pdfStyles.body, { marginTop: 4 }]}>{loc.message}</Text>
+          </>
+        ) : null}
+
+        {(payload.weak_experience || payload.weak_education) && (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Experience & education</Text>
+            {payload.weak_experience ? (
+              <Text style={pdfStyles.body}>
+                Experience: {payload.weak_experience_message ?? "Needs attention"}
+              </Text>
+            ) : null}
+            {payload.weak_education ? (
+              <Text style={[pdfStyles.body, { marginTop: 4 }]}>
+                Education: {payload.weak_education_message ?? "Needs attention"}
+              </Text>
+            ) : null}
+          </>
+        )}
+
+        <Text
+          style={pdfStyles.footerNote}
+          fixed
+        >
+          Generated by Crackint — interview preparation
+        </Text>
+      </Page>
+    </Document>
+  )
+}

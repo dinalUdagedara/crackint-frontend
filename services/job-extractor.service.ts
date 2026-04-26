@@ -1,16 +1,9 @@
+import { getResumeOrJobUploadFileError } from "@/lib/upload-file-validation"
 import type { ApiResponse } from "@/types/api.types"
 import type { JobExtractPayload } from "@/types/api.types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 const JOBS_BASE = `${API_BASE}/api/v1/jobs`
-
-const SUPPORTED_FILE_TYPES = [
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
-  "image/webp",
-]
 
 export class JobExtractError extends Error {
   constructor(
@@ -35,19 +28,14 @@ async function parseResponse<T>(res: Response): Promise<ApiResponse<T>> {
   return data
 }
 
-function isSupportedFileType(file: File): boolean {
-  return SUPPORTED_FILE_TYPES.includes(file.type)
-}
-
-/** Extract job entities from a PDF or image file. Backend accepts PDF and images (PNG, JPEG, WebP). */
+/** Extract job entities from a PDF, Word (.docx), or image file. See `upload-file-validation`. */
 export async function extractJobFromFile(
   file: File,
   useValidation = false
 ): Promise<ApiResponse<JobExtractPayload>> {
-  if (!isSupportedFileType(file)) {
-    throw new JobExtractError(
-      "Only PDF and image files (PNG, JPEG, WebP) are supported. Please paste job description text instead."
-    )
+  const typeErr = getResumeOrJobUploadFileError(file)
+  if (typeErr) {
+    throw new JobExtractError(typeErr)
   }
 
   const formData = new FormData()

@@ -137,6 +137,7 @@ export function JobPostingDetail() {
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
   const [isSkillGapLoading, setIsSkillGapLoading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [candidateLocation, setCandidateLocation] = useState<string>("")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [coverLetter, setCoverLetter] = useState<CoverLetter | null>(null)
@@ -215,6 +216,8 @@ export function JobPostingDetail() {
     }
   }, [axiosAuth, job, selectedResumeId])
 
+  // When resume/job changes, try to load existing stored analysis (GET only).
+  // If none exists (404), leave result empty and wait for the user to click Analyze.
   useEffect(() => {
     if (!id || !job || !selectedResumeId) {
       setSkillGapResult(null)
@@ -234,30 +237,12 @@ export function JobPostingDetail() {
         if (res.success && res.payload) {
           setSkillGapResult(res.payload)
         }
+        // If 404, leave result null — user must click "Analyze" to run analysis
       } catch (err) {
         if (!isMounted) return
         if (err instanceof MatchError && err.status === 404) {
           setSkillGapError(null)
           setSkillGapResult(null)
-          try {
-            const postRes = await runSkillGapAnalysis(
-              axiosAuth,
-              selectedResumeId,
-              id,
-              { use_llm: true }
-            )
-            if (!isMounted) return
-            if (postRes.success && postRes.payload) {
-              setSkillGapResult(postRes.payload)
-            }
-          } catch (postErr) {
-            if (!isMounted) return
-            setSkillGapError(
-              postErr instanceof MatchError
-                ? postErr.message
-                : "Failed to analyze match."
-            )
-          }
         } else {
           setSkillGapError(
             err instanceof MatchError ? err.message : "Failed to load analysis."
@@ -275,6 +260,7 @@ export function JobPostingDetail() {
     }
   }, [axiosAuth, id, job, selectedResumeId])
 
+  // No automatic fetch when resume is selected — user must click "Analyze" or "Re-analyse"
   async function handleAnalyzeSkillGap() {
     if (!id || !selectedResumeId || isAnalyzing) return
     setIsAnalyzing(true)
@@ -283,6 +269,7 @@ export function JobPostingDetail() {
     try {
       const res = await runSkillGapAnalysis(axiosAuth, selectedResumeId, id, {
         use_llm: true,
+        candidate_location: candidateLocation,
       })
       if (res.success && res.payload) {
         setSkillGapResult(res.payload)
@@ -483,9 +470,11 @@ export function JobPostingDetail() {
                 className="size-full object-cover"
               />
             ) : (
-              <div
-                className={`absolute inset-0 ${getCoverGradient(job.id)}`}
-              >
+              <div className="absolute inset-0 bg-background">
+                <div
+                  className={`absolute inset-0 ${getCoverGradient(job.id)}`}
+                  aria-hidden
+                />
                 <div className="absolute inset-0 flex items-center justify-center opacity-40">
                   <span className="text-6xl font-bold text-primary">
                     {getInitial(job)}
@@ -501,6 +490,29 @@ export function JobPostingDetail() {
             onDelete={() => setShowDeleteConfirm(true)}
             isDeleting={isDeleting}
           />
+
+          {job.source_file_url && (
+            <div className="rounded-lg border border-border/60 bg-muted/10 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium">Uploaded source file</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Open the original document/image uploaded for this job posting.
+                  </p>
+                </div>
+                <Button asChild size="sm" variant="outline" className="gap-2">
+                  <a
+                    href={job.source_file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View uploaded file
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Practice block */}
           <div className="rounded-lg border border-border/60 bg-muted/10 p-4">
@@ -555,6 +567,8 @@ export function JobPostingDetail() {
             isAnalyzing={isAnalyzing}
             skillGapError={skillGapError}
             skillGapResult={skillGapResult}
+            candidateLocation={candidateLocation}
+            onCandidateLocationChange={setCandidateLocation}
           />
 
           <JobPostingCoverLetterSection

@@ -1,4 +1,4 @@
-import { FileUp } from "lucide-react"
+import { FileUp, Pencil } from "lucide-react"
 import type { JobExtractPayload } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 
@@ -26,11 +26,13 @@ function getEntityLabel(key: string): string {
 type ExtractedJobEntitiesCardProps = {
   payload: JobExtractPayload
   onReplace: () => void
+  onEdit?: () => void
 }
 
 export function ExtractedJobEntitiesCard({
   payload,
   onReplace,
+  onEdit,
 }: ExtractedJobEntitiesCardProps) {
   const entities = payload.entities ?? {}
   const entries = Object.entries(entities).filter(
@@ -40,6 +42,17 @@ export function ExtractedJobEntitiesCard({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-end gap-2">
+        {onEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+            className="shrink-0 rounded-lg"
+          >
+            <Pencil className="size-4" />
+            Edit
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"

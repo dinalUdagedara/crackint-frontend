@@ -34,7 +34,7 @@ export default function ChatInputView({
   return (
     <footer
       className={cn(
-        "w-full shrink-0 border-t border-border bg-muted/30 px-3 py-2 sm:px-4 sm:py-3",
+        "w-full shrink-0 border-t border-border bg-background px-3 py-2 sm:px-4 sm:py-3",
         className
       )}
     >

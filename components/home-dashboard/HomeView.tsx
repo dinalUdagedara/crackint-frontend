@@ -3,6 +3,7 @@
 import SummaryView from "./summary-section/SummaryView"
 import TitleSection from "./title-section/TitleSection"
 import ReadinessDashboard from "./ReadinessDashboard"
+import PrepScheduleCard from "./PrepScheduleCard"
 
 const HomeView = () => {
   return (
@@ -11,6 +12,9 @@ const HomeView = () => {
         <TitleSection />
         <div className="mt-3 sm:mt-4">
           <SummaryView />
+        </div>
+        <div className="mt-4 sm:mt-6">
+          <PrepScheduleCard />
         </div>
         <div className="mt-4 sm:mt-6">
           <ReadinessDashboard />

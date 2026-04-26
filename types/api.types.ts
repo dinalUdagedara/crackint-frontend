@@ -24,6 +24,8 @@ export type ResumeEntityKey =
 export interface ResumeExtractPayload {
   entities: Record<string, string[]>;
   raw_text: string | null;
+  /** S3 URL of uploaded source file (null for text-only extraction or S3 fallback). */
+  source_file_url?: string | null;
 }
 
 /** Full resume from API (persisted) */
@@ -32,6 +34,8 @@ export interface Resume {
   user_id: string | null;
   entities: Record<string, string[]>;
   raw_text: string | null;
+  /** S3 URL for the original uploaded resume file, if available. */
+  source_file_url?: string | null;
   /** Latest CV score (0–100) if ever computed. */
   cv_score?: number | null;
   /** When the CV score was computed (ISO datetime). */
@@ -40,8 +44,11 @@ export interface Resume {
   updated_at: string;
 }
 
-/** Payload from POST extract - may include id if persisted */
-export type ResumeExtractResult = ResumeExtractPayload & Partial<Pick<Resume, "id" | "user_id" | "created_at" | "updated_at">>;
+/** Payload from POST extract - backend may return either `id` or `resume_id`. */
+export type ResumeExtractResult = ResumeExtractPayload &
+  Partial<Pick<Resume, "id" | "user_id" | "created_at" | "updated_at">> & {
+    resume_id?: string;
+  };
 
 /** Response payload for GET /resumes - array of resumes */
 export type ResumeListPayload = Resume[];
@@ -50,6 +57,8 @@ export type ResumeListPayload = Resume[];
 export interface JobExtractPayload {
   entities: Record<string, string[]>;
   raw_text: string | null;
+  /** S3 URL of uploaded source file (null for text-only extraction or S3 fallback). */
+  source_file_url?: string | null;
 }
 
 // ---- Job postings ----
@@ -66,6 +75,8 @@ export interface JobPosting {
   /** User-defined display order (lower = earlier). */
   display_order?: number | null;
   cover_image_url?: string | null;
+  /** S3 URL for the original uploaded job document/image, if available. */
+  source_file_url?: string | null;
   notes?: string | null;
   questions_to_ask?: string | null;
   interview_at?: string | null;
@@ -78,6 +89,16 @@ export interface JobPosting {
 
 export type JobPostingListPayload = JobPosting[];
 
+/** Item from GET /job-postings/near-deadline (deadline or interview in next N days). */
+export interface NearDeadlineItem {
+  job: JobPosting;
+  next_milestone_date: string;
+  next_milestone_type: "deadline" | "interview";
+  days_until: number;
+}
+
+export type NearDeadlinePayload = NearDeadlineItem[];
+
 export interface JobPostingCreate {
   user_id: string | null;
   entities: Record<string, string[]>;
@@ -85,6 +106,7 @@ export interface JobPostingCreate {
   location: string | null;
   deadline: string | null;
   cover_image_url?: string | null;
+  source_file_url?: string | null;
   notes?: string | null;
   questions_to_ask?: string | null;
   interview_at?: string | null;
@@ -103,6 +125,7 @@ export interface JobPostingUpdate {
   deadline?: string | null;
   display_order?: number | null;
   cover_image_url?: string | null;
+  source_file_url?: string | null;
   notes?: string | null;
   questions_to_ask?: string | null;
   interview_at?: string | null;
@@ -242,6 +265,10 @@ export interface User {
   email: string;
   name: string;
   created_at: string;
+  /** Present when backend includes it (e.g. login / me); used for admin UI gating. */
+  is_admin?: boolean;
+  /** Public avatar URL from S3, or null if unset. See backend docs (UserRead). */
+  profile_image_url?: string | null;
 }
 
 export interface RegisterBody {
@@ -253,6 +280,16 @@ export interface RegisterBody {
 export interface LoginBody {
   email: string;
   password: string;
+}
+
+/**
+ * PATCH /api/v1/auth/me — at least one field required (backend partial update).
+ * The profile UI sends `name` and/or `profile_image_url` (not email).
+ */
+export interface UserProfileUpdateBody {
+  name?: string;
+  email?: string;
+  profile_image_url?: string | null;
 }
 
 export interface LoginPayload {
@@ -274,8 +311,17 @@ export interface CVScorePayload {
 
 // ---- Skill-Gap ----
 
+export interface LocationSuitability {
+  job_location_display: string | null;
+  is_remote: boolean;
+  candidate_location: string | null;
+  suitability: "good" | "caution" | "unknown";
+  message: string;
+  highlight_remote_match: boolean;
+}
+
 export interface SkillGapAlert {
-  type: "missing_skill" | "weak_experience" | "weak_education";
+  type: "missing_skill" | "weak_experience" | "weak_education" | "location_mismatch";
   message: string;
   severity: "low" | "medium" | "high";
 }
@@ -300,6 +346,8 @@ export interface SkillGapPayload {
   llm_fit_analysis?: ResumeJobFitAnalysis | null;
   /** When the analysis was run (POST or GET). */
   analyzed_at?: string | null;
+  /** Optional job vs candidate location analysis (when enabled on backend). */
+  location_suitability?: LocationSuitability | null;
 }
 
 // ---- Readiness ----
@@ -388,4 +436,48 @@ export interface UpdateCoverLetterBody {
 export interface CoverLetterDeletePayload {
   deleted: boolean;
 }
+
+// ---- Admin (GET/PATCH/DELETE /api/v1/admin/...) ----
+
+export type AdminUserListItem = {
+  id: string;
+  email: string;
+  name: string;
+  is_admin: boolean;
+  profile_image_url?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminUserListPayload = AdminUserListItem[];
+
+export type AdminUserUpdateBody = {
+  name?: string;
+  email?: string;
+  profile_image_url?: string | null;
+};
+
+export type AdminUserDeletePayload = {
+  deleted_user_id: string;
+  prep_sessions_deleted: number;
+  cover_letters_deleted: number;
+  resumes_deleted: number;
+  job_postings_deleted: number;
+};
+
+export type AdminSessionListItem = {
+  id: string;
+  user_id: string | null;
+  user_email: string | null;
+  user_name: string | null;
+  resume_id: string | null;
+  job_posting_id: string | null;
+  mode: string;
+  status: string;
+  readiness_score: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminSessionListPayload = AdminSessionListItem[];
 

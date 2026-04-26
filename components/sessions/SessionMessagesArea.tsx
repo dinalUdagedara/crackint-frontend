@@ -6,12 +6,18 @@ type SessionMessagesAreaProps = {
   session: PrepSessionWithMessages
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   pendingMessage?: Message | null
+  userAvatarUrl?: string | null
+  userName?: string | null
+  userEmail?: string | null
 }
 
 export const SessionMessagesArea: React.FC<SessionMessagesAreaProps> = ({
   session,
   messagesEndRef,
   pendingMessage,
+  userAvatarUrl,
+  userName,
+  userEmail,
 }) => {
   return (
     <div className="flex-1 overflow-y-auto px-4 pb-4 pt-20">
@@ -19,7 +25,13 @@ export const SessionMessagesArea: React.FC<SessionMessagesAreaProps> = ({
         {session.messages && session.messages.length > 0 ? (
           <>
             {session.messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                userAvatarUrl={userAvatarUrl}
+                userName={userName}
+                userEmail={userEmail}
+              />
             ))}
           </>
         ) : (
@@ -39,6 +51,9 @@ export const SessionMessagesArea: React.FC<SessionMessagesAreaProps> = ({
             key={pendingMessage.id}
             message={pendingMessage}
             isPending
+            userAvatarUrl={userAvatarUrl}
+            userName={userName}
+            userEmail={userEmail}
           />
         )}
         <div ref={messagesEndRef} />

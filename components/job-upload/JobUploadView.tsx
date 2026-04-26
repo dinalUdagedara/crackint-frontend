@@ -27,18 +27,20 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { ExtractedJobEntitiesCard } from "./ExtractedJobEntitiesCard"
+import { EditJobEntitiesDialog } from "./EditJobEntitiesDialog"
+import { HeroGradientCard } from "@/components/ui/hero-gradient-card"
 
 export default function JobUploadView({ userId: _userId }: { userId?: string | null }) {
   const axiosAuth = useAxiosAuth()
   const router = useRouter()
   const [pasteText, setPasteText] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [useValidation, setUseValidation] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<JobExtractPayload | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   const performExtraction = useCallback(
     async (
@@ -83,14 +85,14 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
 
     if (selectedFile) {
       performExtraction(() =>
-        extractJobFromFile(selectedFile, useValidation)
+        extractJobFromFile(selectedFile)
       )
     } else if (trimmed) {
       performExtraction(() =>
-        extractJobFromText(trimmed, useValidation)
+        extractJobFromText(trimmed)
       )
     }
-  }, [selectedFile, pasteText, canExtract, performExtraction, useValidation])
+  }, [selectedFile, pasteText, canExtract, performExtraction])
 
   const handleReplaceJobPoster = useCallback(() => {
     setResult(null)
@@ -106,13 +108,15 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
     try {
       const location =
         result.entities?.LOCATION?.[0] ??
-        result.entities?.CITY?.[0] ??
+        // Fallback if extractor uses CITY instead of LOCATION
+        (result as any).entities?.CITY?.[0] ??
         null
 
       const response = await createJobPosting(axiosAuth, {
         user_id: null,
         entities: result.entities ?? {},
         raw_text: result.raw_text ?? null,
+        source_file_url: result.source_file_url ?? null,
         location,
         deadline: null,
       })
@@ -135,9 +139,8 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
-          {/* Hero */}
-          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-muted/40 via-muted/20 to-transparent p-6 shadow-sm md:p-8">
-            <div className="relative flex items-start gap-4">
+          <HeroGradientCard>
+            <div className="flex items-start gap-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <ClipboardList className="size-6" />
               </div>
@@ -146,12 +149,12 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                   Upload job poster
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Upload a PDF or image of the job poster, or paste the job
+                  Upload a PDF, Word (.docx), or image of the job poster, or paste the job
                   description text. We&apos;ll extract key information for interview prep.
                 </p>
               </div>
             </div>
-          </div>
+          </HeroGradientCard>
 
           {error && (
             <div
@@ -179,13 +182,14 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                 <CardHeader className="pb-4">
                   <CardTitle className="text-base">Extracted information</CardTitle>
                   <CardDescription>
-                    Review the data we extracted from the job poster, or replace it with a new file.
+                    Review and edit the data we extracted from the job poster, or replace it with a new file.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ExtractedJobEntitiesCard
                     payload={result!}
                     onReplace={handleReplaceJobPoster}
+                    onEdit={() => setShowEditDialog(true)}
                   />
                 </CardContent>
               </Card>
@@ -225,6 +229,18 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                   </div>
                 </CardContent>
               </Card>
+
+              {result && (
+                <EditJobEntitiesDialog
+                  axiosAuth={axiosAuth}
+                  extracted={result}
+                  open={showEditDialog}
+                  onOpenChange={setShowEditDialog}
+                  onSaveLocal={(updated) => {
+                    setResult(updated)
+                  }}
+                />
+              )}
 
               <Card className="rounded-2xl border-border/60 shadow-sm">
                 <CardHeader className="pb-4">
@@ -279,23 +295,6 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                           />
                         </TabsContent>
                       </Tabs>
-                      <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-2">
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={useValidation}
-                            onChange={(e) =>
-                              setUseValidation(e.target.checked)
-                            }
-                            className="size-4 rounded border-input"
-                          />
-                          <span className="text-sm font-medium">Use AI validation (more accurate, slower)</span>
-                        </label>
-                        <p className="text-xs text-muted-foreground">
-                          AI validation may improve completeness; if unavailable,
-                          standard extraction is used automatically.
-                        </p>
-                      </div>
                       <Button
                         onClick={handleExtractClick}
                         disabled={isLoading || !canExtract}
@@ -305,7 +304,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                         {isLoading ? (
                           <>
                             <Loader2 className="size-4 animate-spin" />
-                            {useValidation ? "Validating..." : "Extracting..."}
+                            Extracting...
                           </>
                         ) : (
                           "Extract"
@@ -314,13 +313,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                     </div>
                     {isLoading && (
                       <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
-                        <AIExtractionLoader
-                          message={
-                            useValidation
-                              ? "Extracting and validating with AI"
-                              : "Analyzing job description"
-                          }
-                        />
+                        <AIExtractionLoader message="Analyzing job description" />
                       </div>
                     )}
                   </div>
@@ -332,7 +325,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
               <CardHeader className="pb-4">
                 <CardTitle className="text-base">How would you like to add your job poster?</CardTitle>
                 <CardDescription>
-                  Upload a PDF or image, or paste the job description text. We&apos;ll extract key information for interview prep.
+                  Upload a PDF, Word (.docx), or image, or paste the job description text. We&apos;ll extract key information for interview prep.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -367,7 +360,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                           onFileSelect={handleFileSelect}
                         />
                         <p className="text-xs text-muted-foreground">
-                          PDF or images (PNG, JPEG, WebP) up to 5 MB.
+                          PDF, Word (.docx), or images (PNG, JPEG, WebP) up to 10 MB. Legacy .doc is not supported.
                         </p>
                       </TabsContent>
                       <TabsContent value="paste" className="mt-5 space-y-1.5">
@@ -384,21 +377,6 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                         />
                       </TabsContent>
                     </Tabs>
-                    <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-2">
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={useValidation}
-                          onChange={(e) => setUseValidation(e.target.checked)}
-                          className="size-4 rounded border-input"
-                        />
-                        <span className="text-sm font-medium">Use AI validation (more accurate, slower)</span>
-                      </label>
-                      <p className="text-xs text-muted-foreground">
-                        AI validation may improve completeness; if unavailable,
-                        standard extraction is used automatically.
-                      </p>
-                    </div>
                     <Button
                       onClick={handleExtractClick}
                       disabled={isLoading || !canExtract}
@@ -407,7 +385,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                       {isLoading ? (
                         <>
                           <Loader2 className="size-4 animate-spin" />
-                          {useValidation ? "Validating..." : "Extracting..."}
+                          Extracting...
                         </>
                       ) : (
                         "Extract"
@@ -416,13 +394,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                   </div>
                   {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
-                      <AIExtractionLoader
-                        message={
-                          useValidation
-                            ? "Extracting and validating with AI"
-                            : "Analyzing job description"
-                        }
-                      />
+                      <AIExtractionLoader message="Analyzing job description" />
                     </div>
                   )}
                 </div>

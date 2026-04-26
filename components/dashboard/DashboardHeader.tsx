@@ -3,7 +3,9 @@
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import { useSession, signOut, signIn } from "next-auth/react"
+import Link from "next/link"
 import { User } from "lucide-react"
+import { UserAvatar } from "@/components/common/UserAvatar"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,6 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ClientOnly } from "@/components/common/ClientOnly"
 import { ModeToggle } from "@/components/common/ModeToggler"
+import { NearDeadlineNotification } from "@/components/dashboard/NearDeadlineNotification"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,6 +88,12 @@ function getBreadcrumbs(pathname: string): BreadcrumbSegment[] {
       { label: "Admin", href: null },
     ]
   }
+  if (pathname === "/profile") {
+    return [
+      { label: "Home", href: "/" },
+      { label: "Profile", href: null },
+    ]
+  }
   return [{ label: "Home", href: "/" }, { label: pathname.slice(1), href: null }]
 }
 
@@ -96,7 +105,7 @@ export function DashboardHeader() {
   const isAuthenticated = !!session
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background/85 px-4 backdrop-blur-sm">
       <SidebarTrigger className="-ml-1" />
       <Separator
         orientation="vertical"
@@ -126,6 +135,9 @@ export function DashboardHeader() {
       </Breadcrumb>
       <div className="ml-auto flex items-center gap-2">
         <ClientOnly>
+          <NearDeadlineNotification />
+        </ClientOnly>
+        <ClientOnly>
           <ModeToggle />
         </ClientOnly>
         <ClientOnly>
@@ -135,10 +147,20 @@ export function DashboardHeader() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="rounded-full"
+                  className="rounded-full overflow-hidden p-0"
                   aria-label={isAuthenticated ? "Account menu" : "Sign in"}
                 >
-                  <User className="size-4" />
+                  {isAuthenticated ? (
+                    <UserAvatar
+                      imageUrl={session.user?.profileImageUrl}
+                      name={session.user?.name}
+                      email={session.user?.email}
+                      size="md"
+                      className="size-full rounded-full ring-0"
+                    />
+                  ) : (
+                    <User className="size-4" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -154,14 +176,19 @@ export function DashboardHeader() {
                 )}
                 <DropdownMenuSeparator />
                 {isAuthenticated ? (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => {
-                      void signOut({ callbackUrl: "/", redirect: true })
-                    }}
-                  >
-                    Sign out
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        void signOut({ callbackUrl: "/", redirect: true })
+                      }}
+                    >
+                      Sign out
+                    </DropdownMenuItem>
+                  </>
                 ) : (
                   <>
                     <DropdownMenuItem

@@ -216,7 +216,7 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
 
   return (
     <div className="space-y-8">
-      <section className="space-y-3 rounded-lg border bg-muted/20 p-4">
+      <section className="space-y-3 rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold tracking-tight">
@@ -304,40 +304,58 @@ export function SessionsView({ userId: _userIdProp }: { userId?: string | null }
 
           <div className="space-y-2">
             <Label>Mode</Label>
-            <div className="space-y-1.5">
-              <label className="flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="radio"
-                  className="h-3.5 w-3.5 accent-primary"
-                  name="session-mode"
-                  value="TARGETED"
-                  checked={mode === "TARGETED"}
-                  onChange={() => setMode("TARGETED")}
-                />
-                <span>Targeted</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="radio"
-                  className="h-3.5 w-3.5 accent-primary"
-                  name="session-mode"
-                  value="QUICK_PRACTICE"
-                  checked={mode === "QUICK_PRACTICE"}
-                  onChange={() => setMode("QUICK_PRACTICE")}
-                />
-                <span>Quick practice</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="radio"
-                  className="h-3.5 w-3.5 accent-primary"
-                  name="session-mode"
-                  value="TUTOR_CHAT"
-                  checked={mode === "TUTOR_CHAT"}
-                  onChange={() => setMode("TUTOR_CHAT")}
-                />
-                <span>Tutor chat</span>
-              </label>
+            <div className="space-y-2.5">
+              <div>
+                <label className="flex cursor-pointer items-center gap-2 text-xs">
+                  <input
+                    type="radio"
+                    className="h-3.5 w-3.5 shrink-0 accent-primary"
+                    name="session-mode"
+                    value="TARGETED"
+                    checked={mode === "TARGETED"}
+                    onChange={() => setMode("TARGETED")}
+                  />
+                  <span className="font-medium">Targeted</span>
+                </label>
+                <p className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
+                  Pair a CV with a job posting—questions and feedback focus on that
+                  role and your fit.
+                </p>
+              </div>
+              <div>
+                <label className="flex cursor-pointer items-center gap-2 text-xs">
+                  <input
+                    type="radio"
+                    className="h-3.5 w-3.5 shrink-0 accent-primary"
+                    name="session-mode"
+                    value="QUICK_PRACTICE"
+                    checked={mode === "QUICK_PRACTICE"}
+                    onChange={() => setMode("QUICK_PRACTICE")}
+                  />
+                  <span className="font-medium">Quick practice</span>
+                </label>
+                <p className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
+                  General interview practice without choosing a specific job or
+                  resume.
+                </p>
+              </div>
+              <div>
+                <label className="flex cursor-pointer items-center gap-2 text-xs">
+                  <input
+                    type="radio"
+                    className="h-3.5 w-3.5 shrink-0 accent-primary"
+                    name="session-mode"
+                    value="TUTOR_CHAT"
+                    checked={mode === "TUTOR_CHAT"}
+                    onChange={() => setMode("TUTOR_CHAT")}
+                  />
+                  <span className="font-medium">Tutor chat</span>
+                </label>
+                <p className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
+                  Ask for tips, explanations, and coaching in a free-form chat, no
+                  CV or job required.
+                </p>
+              </div>
             </div>
           </div>
         </div>

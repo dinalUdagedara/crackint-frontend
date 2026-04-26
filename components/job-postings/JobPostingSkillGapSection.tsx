@@ -1,6 +1,8 @@
 "use client"
 
-import { Loader2, AlertTriangle } from "lucide-react"
+import { useRef } from "react"
+import Link from "next/link"
+import { Loader2, AlertTriangle, MapPin, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -26,6 +28,11 @@ interface JobPostingSkillGapSectionProps {
   analyzeDisabled?: boolean
   /** When true, hide resume selector and section title (e.g. match page has its own pickers). */
   compactMode?: boolean
+  /** Optional candidate location text, forwarded to analysis call. */
+  candidateLocation?: string
+  onCandidateLocationChange?: (value: string) => void
+  /** Called when user clicks "Set location" in compact mode (e.g. to focus the location input above). */
+  onSetLocationRequest?: () => void
 }
 
 export function JobPostingSkillGapSection({
@@ -40,8 +47,12 @@ export function JobPostingSkillGapSection({
   skillGapResult,
   analyzeDisabled = false,
   compactMode = false,
+  candidateLocation,
+  onCandidateLocationChange,
+  onSetLocationRequest,
 }: JobPostingSkillGapSectionProps) {
   const isLoading = isSkillGapLoading || isAnalyzing
+  const locationInputRef = useRef<HTMLInputElement>(null)
   return (
     <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
       {!compactMode && (
@@ -103,10 +114,33 @@ export function JobPostingSkillGapSection({
                 <Loader2 className="mr-2 size-4 animate-spin" />
                 {isAnalyzing ? "Analyzing..." : "Loading..."}
               </>
+            ) : skillGapResult ? (
+              "Re-analyse"
             ) : (
               "Analyze"
             )}
           </Button>
+        </div>
+      )}
+      {!compactMode && typeof candidateLocation !== "undefined" && onCandidateLocationChange && (
+        <div className="space-y-1.5">
+          <Label htmlFor="skill-gap-location">Your location (optional)</Label>
+          <div className="flex items-center gap-2">
+            <div className="flex size-9 items-center justify-center rounded-lg border border-border/60 bg-muted/40 text-muted-foreground">
+              <MapPin className="size-4" />
+            </div>
+            <input
+              ref={locationInputRef}
+              id="skill-gap-location"
+              value={candidateLocation}
+              onChange={(e) => onCandidateLocationChange(e.target.value)}
+              placeholder="e.g. Colombo, Sri Lanka"
+              className="h-10 flex-1 rounded-xl border border-border/60 bg-background px-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Used to highlight remote roles and flag roles that may require relocation.
+          </p>
         </div>
       )}
       {skillGapError && (
@@ -119,6 +153,88 @@ export function JobPostingSkillGapSection({
       )}
       {skillGapResult && (
         <div className="space-y-4 pt-2">
+          {/* Banner: candidate location missing (suitability unknown) */}
+          {skillGapResult.location_suitability?.suitability === "unknown" && (
+            <div
+              role="status"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2.5 text-sm text-foreground"
+            >
+              <p className="min-w-0 flex-1">
+                Add your location to get a realistic match by distance.
+              </p>
+              {compactMode && !onSetLocationRequest ? (
+                <Button variant="secondary" size="sm" className="shrink-0 rounded-lg" asChild>
+                  <Link href="/resumes">Set location</Link>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0 rounded-lg"
+                  onClick={() => {
+                    if (compactMode && onSetLocationRequest) {
+                      onSetLocationRequest()
+                    } else if (locationInputRef.current) {
+                      locationInputRef.current.focus()
+                      locationInputRef.current.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      })
+                    }
+                  }}
+                >
+                  Set location
+                </Button>
+              )}
+            </div>
+          )}
+
+          {skillGapResult.location_suitability && (
+            <div
+              className={`space-y-2 rounded-xl border px-3 py-2.5 text-sm ${skillGapResult.location_suitability.highlight_remote_match
+                  ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+                  : skillGapResult.location_suitability.suitability === "caution"
+                    ? "border-amber-500/60 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                    : "border-border/70 bg-muted/40 text-foreground"
+                }`}
+            >
+              <div className="flex items-start gap-2">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="font-medium text-xs uppercase tracking-wide">
+                    Location suitability
+                  </p>
+                  <p>{skillGapResult.location_suitability.message}</p>
+                  {/* Job location missing notice */}
+                  {!skillGapResult.location_suitability.job_location_display?.trim() ? (
+                    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-300">
+                      <HelpCircle className="size-3.5 shrink-0" />
+                      <span>Job location not specified. Ask the recruiter or check the original posting.</span>
+                      <span className="inline-flex rounded-md border border-amber-500/50 bg-amber-500/20 px-1.5 py-0.5 font-medium">
+                        Location: Not specified
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Job:{" "}
+                      <span className="font-medium">
+                        {skillGapResult.location_suitability.job_location_display}
+                      </span>
+                      {skillGapResult.location_suitability.candidate_location && (
+                        <>
+                          {" · "}You:{" "}
+                          <span className="font-medium">
+                            {skillGapResult.location_suitability.candidate_location}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {skillGapResult.analyzed_at && (
             <p className="text-xs text-muted-foreground">
               Analyzed{" "}
@@ -160,21 +276,26 @@ export function JobPostingSkillGapSection({
           )}
           {skillGapResult.alerts.length > 0 && (
             <div className="space-y-2">
-              {skillGapResult.alerts.map((a, i) => (
-                <div
-                  key={i}
-                  className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm ${
-                    a.severity === "high"
-                      ? "border border-destructive/50 bg-destructive/10 text-destructive"
-                      : a.severity === "medium"
-                        ? "border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                        : "border border-muted bg-muted/30 text-muted-foreground"
-                  }`}
-                >
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                  {a.message}
-                </div>
-              ))}
+              {skillGapResult.alerts.map((a, i) => {
+                const isLocationMismatch = a.type === "location_mismatch"
+                const useWarning =
+                  isLocationMismatch || a.severity === "medium"
+                const useDanger = a.severity === "high" && !isLocationMismatch
+                return (
+                  <div
+                    key={i}
+                    className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm ${useDanger
+                        ? "border border-destructive/50 bg-destructive/10 text-destructive"
+                        : useWarning
+                          ? "border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          : "border border-muted bg-muted/30 text-muted-foreground"
+                      }`}
+                  >
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    {a.message}
+                  </div>
+                )
+              })}
             </div>
           )}
           {skillGapResult.missing_skills.length > 0 && (

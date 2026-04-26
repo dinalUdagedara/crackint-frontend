@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { UserAvatar } from "@/components/common/UserAvatar"
 import { signIn, signOut, useSession } from "next-auth/react"
 import {
   BarChart2,
@@ -15,6 +16,7 @@ import {
   LogOut,
   Trash2,
   User,
+  UserRound,
 } from "lucide-react"
 import {
   SidebarFooter as UISidebarFooter,
@@ -42,14 +44,17 @@ export function SidebarFooter() {
   const isAuthenticated = !!session
 
   const footerItems = [
-   
     { title: "CV Checker", href: "/cv-score", icon: FileCheck, type: "link" as const },
     { title: "CV Upload", href: "/cv-upload", icon: FileUp, type: "link" as const },
     { title: "My CVs", href: "/resumes", icon: FileText, type: "link" as const },
     { title: "Job Poster", href: "/job-upload", icon: ClipboardList, type: "link" as const },
     { title: "Job Tracker", href: "/job-postings", icon: List, type: "link" as const },
     { title: "CV vs job", href: "/match", icon: BarChart2, type: "link" as const },
-    { title: "Admin", href: "/admin", icon: LayoutDashboard, type: "link" as const },
+    ...(session?.user?.isAdmin
+      ? [{ title: "Admin", href: "/admin", icon: LayoutDashboard, type: "link" as const }]
+      : []),
+    { title: "Profile", href: "/profile", icon: UserRound, type: "link" as const },
+
   ]
 
   const accountLabel = isAuthenticated
@@ -71,7 +76,7 @@ export function SidebarFooter() {
                 className={cn(
                   "pr-2",
                   isActive &&
-                    "bg-sidebar-primary/20 text-foreground border-l-2 border-sidebar-primary rounded-l-md data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-foreground"
+                  "bg-sidebar-primary/20 text-foreground border-l-2 border-sidebar-primary rounded-l-md data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-foreground"
                 )}
               >
                 <Link href={item.href}>
@@ -92,10 +97,20 @@ export function SidebarFooter() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className={cn(sidebarTriggerClass)}
+                  className={cn(sidebarTriggerClass, "gap-2")}
                   aria-label={isAuthenticated ? "Account menu" : "Sign in"}
                 >
-                  <User />
+                  {isAuthenticated ? (
+                    <UserAvatar
+                      imageUrl={session?.user?.profileImageUrl}
+                      name={session?.user?.name}
+                      email={session?.user?.email}
+                      size="sm"
+                      className="shrink-0 ring-sidebar-border"
+                    />
+                  ) : (
+                    <User />
+                  )}
                   <TruncatedText
                     text={accountLabel}
                     maxChars={18}
@@ -116,15 +131,20 @@ export function SidebarFooter() {
                 )}
                 <DropdownMenuSeparator />
                 {isAuthenticated ? (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => {
-                      void signOut({ callbackUrl: "/", redirect: true })
-                    }}
-                  >
-                    <LogOut className="size-4" />
-                    Log out
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        void signOut({ callbackUrl: "/", redirect: true })
+                      }}
+                    >
+                      <LogOut className="size-4" />
+                      Log out
+                    </DropdownMenuItem>
+                  </>
                 ) : (
                   <>
                     <DropdownMenuItem

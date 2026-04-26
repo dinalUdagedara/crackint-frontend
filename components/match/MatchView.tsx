@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import Link from "next/link"
-import { ArrowLeft, BarChart2, FileText, Briefcase, Loader2 } from "lucide-react"
+import { BarChart2, Briefcase, Download, FileText, Loader2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { useQuery } from "@tanstack/react-query"
@@ -29,6 +28,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { JobPostingSkillGapSection } from "@/components/job-postings/JobPostingSkillGapSection"
+import { HeroGradientCard } from "@/components/ui/hero-gradient-card"
+import { downloadPdfDocument, buildPdfFilenameBase } from "@/components/pdf/download-pdf"
+import { MatchReportPdfDocument } from "@/components/pdf/match-report-pdf"
+import { toast } from "sonner"
 
 export function MatchView() {
   const searchParams = useSearchParams()
@@ -43,6 +46,17 @@ export function MatchView() {
   const [skillGapError, setSkillGapError] = useState<string | null>(null)
   const [isSkillGapLoading, setIsSkillGapLoading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false)
+  const [candidateLocation, setCandidateLocation] = useState<string>("")
+  const locationInputRef = useRef<HTMLInputElement>(null)
+
+  const handleSetLocationRequest = () => {
+    locationInputRef.current?.focus()
+    locationInputRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    })
+  }
 
   const resumesQuery = useQuery({
     queryKey: ["resumes", "list", 1, 100],
@@ -108,30 +122,12 @@ export function MatchView() {
         if (res.success && res.payload) {
           setSkillGapResult(res.payload)
         }
+        // If 404, leave result null — user must click "Analyze match" to run analysis
       } catch (err) {
         if (!isMounted) return
         if (err instanceof MatchError && err.status === 404) {
           setSkillGapError(null)
           setSkillGapResult(null)
-          try {
-            const postRes = await runSkillGapAnalysis(
-              axiosAuth,
-              selectedResumeId,
-              selectedJobId,
-              { use_llm: true }
-            )
-            if (!isMounted) return
-            if (postRes.success && postRes.payload) {
-              setSkillGapResult(postRes.payload)
-            }
-          } catch (postErr) {
-            if (!isMounted) return
-            setSkillGapError(
-              postErr instanceof MatchError
-                ? postErr.message
-                : "Failed to analyze match."
-            )
-          }
         } else {
           setSkillGapError(
             err instanceof MatchError ? err.message : "Failed to load analysis."
@@ -155,12 +151,10 @@ export function MatchView() {
     setSkillGapError(null)
     setSkillGapResult(null)
     try {
-      const res = await runSkillGapAnalysis(
-        axiosAuth,
-        selectedResumeId,
-        selectedJobId,
-        { use_llm: true }
-      )
+      const res = await runSkillGapAnalysis(axiosAuth, selectedResumeId, selectedJobId, {
+        use_llm: true,
+        candidate_location: candidateLocation,
+      })
       if (res.success && res.payload) {
         setSkillGapResult(res.payload)
       }
@@ -185,14 +179,41 @@ export function MatchView() {
     setSkillGapResult(null)
   }
 
+  async function handleDownloadMatchPdf() {
+    if (!skillGapResult || !selectedResumeId || !selectedJobId) return
+    const resume = resumes.find((r) => r.id === selectedResumeId)
+    const job = jobs.find((j) => j.id === selectedJobId) ?? selectedJob
+    if (!job) return
+    const resumeName =
+      resume?.entities?.NAME?.[0] ?? `${selectedResumeId.slice(0, 8)}…`
+    const jobTitleStr = jobLabel(job)
+    setIsPdfDownloading(true)
+    try {
+      await downloadPdfDocument(
+        <MatchReportPdfDocument
+          resumeName={resumeName}
+          jobTitle={jobTitleStr}
+          payload={skillGapResult}
+          generatedAt={new Date().toLocaleString()}
+        />,
+        `${buildPdfFilenameBase("crackint-match", jobTitleStr, skillGapResult.analyzed_at ?? undefined)}.pdf`
+      )
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not generate PDF. Try again."
+      )
+    } finally {
+      setIsPdfDownloading(false)
+    }
+  }
+
   const jobLabel = (job: JobPosting) =>
     job.entities?.JOB_TITLE?.[0] ?? job.id.slice(0, 8) + "..."
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-muted/40 via-muted/20 to-transparent p-6 shadow-sm md:p-8">
-        <div className="relative flex items-start gap-4">
+      <HeroGradientCard>
+        <div className="flex items-start gap-4">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <BarChart2 className="size-6" />
           </div>
@@ -205,7 +226,7 @@ export function MatchView() {
             </p>
           </div>
         </div>
-      </div>
+      </HeroGradientCard>
 
       {/* Single selection card */}
       <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
@@ -245,6 +266,25 @@ export function MatchView() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label
+              htmlFor="match-location"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Your location (optional)
+            </Label>
+            <input
+              ref={locationInputRef}
+              id="match-location"
+              value={candidateLocation}
+              onChange={(e) => setCandidateLocation(e.target.value)}
+              placeholder="e.g. Colombo, Sri Lanka"
+              className="h-11 w-full rounded-xl border border-border/80 bg-muted/30 px-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Helps check if the job is practical for you and highlights remote roles.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="match-job" className="text-xs font-medium text-muted-foreground">
               Job posting
@@ -277,20 +317,45 @@ export function MatchView() {
               </SelectContent>
             </Select>
           </div>
-          <Button
-            onClick={handleAnalyzeSkillGap}
-            disabled={!selectedResumeId || !selectedJobId || isSkillGapLoading || isAnalyzing}
-            className="h-11 rounded-xl px-6 shadow-sm"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>Analyze match</>
-            )}
-          </Button>
+          <div className="flex flex-wrap items-end gap-2">
+            <Button
+              onClick={handleAnalyzeSkillGap}
+              disabled={!selectedResumeId || !selectedJobId || isSkillGapLoading || isAnalyzing}
+              className="h-11 rounded-xl px-6 shadow-sm"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : skillGapResult ? (
+                <>Re-analyse</>
+              ) : (
+                <>Analyze match</>
+              )}
+            </Button>
+            {skillGapResult ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDownloadMatchPdf}
+                disabled={isPdfDownloading || isAnalyzing}
+                className="h-11 rounded-xl px-4 shadow-sm"
+              >
+                {isPdfDownloading ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    PDF…
+                  </>
+                ) : (
+                  <>
+                    <Download className="size-4" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+            ) : null}
+          </div>
         </div>
         {selectedJob && (
           <p className="mt-3 text-xs text-muted-foreground">
@@ -312,6 +377,9 @@ export function MatchView() {
         skillGapResult={skillGapResult}
         analyzeDisabled={!selectedJobId}
         compactMode
+        candidateLocation={candidateLocation}
+        onCandidateLocationChange={setCandidateLocation}
+        onSetLocationRequest={handleSetLocationRequest}
       />
     </div>
   )

@@ -88,7 +88,12 @@ export default function JobTrackerTestPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="relative flex min-h-0 flex-1 flex-col bg-background">
+      <div
+        className="pointer-events-none absolute inset-0 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900"
+        aria-hidden
+      />
+      <div className="relative flex min-h-0 flex-1 flex-col">
       {/* Header Section */}
       <div className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 md:py-12 lg:px-8">
@@ -136,9 +141,11 @@ export default function JobTrackerTestPage() {
                     className="group overflow-hidden border-slate-200 bg-white transition-shadow duration-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"
                   >
                     {/* Cover */}
-                    <div
-                      className={`relative h-32 overflow-hidden bg-linear-to-br ${job.coverColor}`}
-                    >
+                    <div className="relative h-32 overflow-hidden bg-background">
+                      <div
+                        className={`absolute inset-0 bg-linear-to-br ${job.coverColor}`}
+                        aria-hidden
+                      />
                       <div className="absolute inset-0 flex items-center justify-center opacity-20">
                         <span className="text-6xl font-bold text-white">
                           {job.initial}
@@ -300,6 +307,7 @@ export default function JobTrackerTestPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

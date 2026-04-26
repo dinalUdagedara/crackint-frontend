@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, ArrowLeft, Pencil, Trash2 } from "lucide-react"
+import { Loader2, ArrowLeft, Pencil, Trash2, ExternalLink } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getResume, deleteResume } from "@/services/resume-uploader.service"
@@ -142,6 +142,22 @@ export function ResumeDetail() {
               </p>
             </div>
             <div className="flex gap-2">
+              {resume.source_file_url && (
+                <Button
+                  asChild
+                  variant="secondary"
+                  size="sm"
+                >
+                  <a
+                    href={resume.source_file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View uploaded file
+                    <ExternalLink className="ml-2 size-4" />
+                  </a>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -163,7 +179,7 @@ export function ResumeDetail() {
           </div>
 
           <div className="grid gap-4 text-sm md:grid-cols-2">
-            <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
+            <div className="space-y-2 rounded-lg border bg-background p-4">
               <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Meta
               </h2>
@@ -176,10 +192,27 @@ export function ResumeDetail() {
                   <dt className="w-24 text-xs text-muted-foreground">Updated</dt>
                   <dd className="text-foreground">{formatDate(resume.updated_at)}</dd>
                 </div>
+                <div className="flex gap-2">
+                  <dt className="w-24 text-xs text-muted-foreground">Source file</dt>
+                  <dd className="text-foreground">
+                    {resume.source_file_url ? (
+                      <a
+                        href={resume.source_file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        Open original upload
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">Not available</span>
+                    )}
+                  </dd>
+                </div>
               </dl>
             </div>
 
-            <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
+            <div className="space-y-2 rounded-lg border bg-background p-4">
               <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Extracted fields
               </h2>
@@ -217,7 +250,7 @@ export function ResumeDetail() {
 
           <div className="space-y-2">
             <h2 className="text-sm font-medium">Raw CV text</h2>
-            <div className="rounded-lg border bg-muted/10 p-4 text-sm whitespace-pre-wrap">
+            <div className="rounded-lg border bg-background p-4 text-sm whitespace-pre-wrap">
               {resume.raw_text ? (
                 resume.raw_text
               ) : (

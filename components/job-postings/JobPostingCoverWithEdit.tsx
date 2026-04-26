@@ -89,9 +89,11 @@ export function JobPostingCoverWithEdit({
             className="size-full object-cover"
           />
         ) : (
-          <div
-            className={`absolute inset-0 ${getCoverGradient(job.id)}`}
-          >
+          <div className="absolute inset-0 bg-background">
+            <div
+              className={`absolute inset-0 ${getCoverGradient(job.id)}`}
+              aria-hidden
+            />
             <div className="absolute inset-0 flex items-center justify-center opacity-40">
               <span className="text-6xl font-bold text-primary">
                 {getInitial(job)}

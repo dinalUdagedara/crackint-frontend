@@ -59,6 +59,7 @@ export default function CVUploadView() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ResumeExtractResult | null>(null)
+  const [useEnhancedExtraction, setUseEnhancedExtraction] = useState(false)
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [pendingReplace, setPendingReplace] = useState<
@@ -120,7 +121,7 @@ export default function CVUploadView() {
         setShowReplaceConfirm(true)
       } else {
         performExtraction(() =>
-          extractResumeFromFile(axiosAuth, selectedFile)
+          extractResumeFromFile(axiosAuth, selectedFile, useEnhancedExtraction)
         )
       }
     } else if (trimmed) {
@@ -129,7 +130,7 @@ export default function CVUploadView() {
         setShowReplaceConfirm(true)
       } else {
         performExtraction(() =>
-          extractResumeFromText(axiosAuth, trimmed)
+          extractResumeFromText(axiosAuth, trimmed, useEnhancedExtraction)
         )
       }
     }
@@ -139,6 +140,7 @@ export default function CVUploadView() {
     result,
     canExtract,
     performExtraction,
+    useEnhancedExtraction,
     axiosAuth,
   ])
 
@@ -146,14 +148,22 @@ export default function CVUploadView() {
     if (!pendingReplace) return
     if (pendingReplace.type === "file") {
       await performExtraction(() =>
-        extractResumeFromFile(axiosAuth, pendingReplace.file)
+        extractResumeFromFile(
+          axiosAuth,
+          pendingReplace.file,
+          useEnhancedExtraction
+        )
       )
     } else {
       await performExtraction(() =>
-        extractResumeFromText(axiosAuth, pendingReplace.text)
+        extractResumeFromText(
+          axiosAuth,
+          pendingReplace.text,
+          useEnhancedExtraction
+        )
       )
     }
-  }, [pendingReplace, performExtraction, axiosAuth])
+  }, [pendingReplace, performExtraction, useEnhancedExtraction, axiosAuth])
 
   const handleCancelReplace = useCallback(() => {
     setShowReplaceConfirm(false)
@@ -319,6 +329,26 @@ export default function CVUploadView() {
                           />
                         </TabsContent>
                       </Tabs>
+                      <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={useEnhancedExtraction}
+                            onChange={(e) =>
+                              setUseEnhancedExtraction(e.target.checked)
+                            }
+                            className="size-4 rounded border-input"
+                          />
+                          <span className="text-sm font-medium">
+                            Use enhanced extraction (AI)
+                          </span>
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                          Enhanced extraction may improve completeness (e.g.
+                          skills); if unavailable, standard extraction is used
+                          automatically.
+                        </p>
+                      </div>
                       <Button
                         onClick={handleExtractClick}
                         disabled={isLoading || !canExtract}
@@ -395,6 +425,26 @@ export default function CVUploadView() {
                         />
                       </TabsContent>
                     </Tabs>
+                    <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={useEnhancedExtraction}
+                          onChange={(e) =>
+                            setUseEnhancedExtraction(e.target.checked)
+                          }
+                          className="size-4 rounded border-input"
+                        />
+                        <span className="text-sm font-medium">
+                          Use enhanced extraction (AI)
+                        </span>
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Enhanced extraction may improve completeness (e.g.
+                        skills); if unavailable, standard extraction is used
+                        automatically.
+                      </p>
+                    </div>
                     <Button
                       onClick={handleExtractClick}
                       disabled={isLoading || !canExtract}

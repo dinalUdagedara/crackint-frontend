@@ -35,6 +35,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
   const router = useRouter()
   const [pasteText, setPasteText] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [useEnhancedExtraction, setUseEnhancedExtraction] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<JobExtractPayload | null>(null)
@@ -85,14 +86,20 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
 
     if (selectedFile) {
       performExtraction(() =>
-        extractJobFromFile(selectedFile)
+        extractJobFromFile(selectedFile, useEnhancedExtraction)
       )
     } else if (trimmed) {
       performExtraction(() =>
-        extractJobFromText(trimmed)
+        extractJobFromText(trimmed, useEnhancedExtraction)
       )
     }
-  }, [selectedFile, pasteText, canExtract, performExtraction])
+  }, [
+    selectedFile,
+    pasteText,
+    canExtract,
+    performExtraction,
+    useEnhancedExtraction,
+  ])
 
   const handleReplaceJobPoster = useCallback(() => {
     setResult(null)
@@ -295,6 +302,26 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                           />
                         </TabsContent>
                       </Tabs>
+                      <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={useEnhancedExtraction}
+                            onChange={(e) =>
+                              setUseEnhancedExtraction(e.target.checked)
+                            }
+                            className="size-4 rounded border-input"
+                          />
+                          <span className="text-sm font-medium">
+                            Use enhanced extraction (AI)
+                          </span>
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                          Enhanced extraction may improve completeness (e.g.
+                          skills); if unavailable, standard extraction is used
+                          automatically.
+                        </p>
+                      </div>
                       <Button
                         onClick={handleExtractClick}
                         disabled={isLoading || !canExtract}
@@ -313,7 +340,13 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                     </div>
                     {isLoading && (
                       <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
-                        <AIExtractionLoader message="Analyzing job description" />
+                        <AIExtractionLoader
+                          message={
+                            useEnhancedExtraction
+                              ? "Extracting with enhanced AI mode"
+                              : "Analyzing job description"
+                          }
+                        />
                       </div>
                     )}
                   </div>
@@ -377,6 +410,26 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                         />
                       </TabsContent>
                     </Tabs>
+                    <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={useEnhancedExtraction}
+                          onChange={(e) =>
+                            setUseEnhancedExtraction(e.target.checked)
+                          }
+                          className="size-4 rounded border-input"
+                        />
+                        <span className="text-sm font-medium">
+                          Use enhanced extraction (AI)
+                        </span>
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Enhanced extraction may improve completeness (e.g.
+                        skills); if unavailable, standard extraction is used
+                        automatically.
+                      </p>
+                    </div>
                     <Button
                       onClick={handleExtractClick}
                       disabled={isLoading || !canExtract}
@@ -394,7 +447,13 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
                   </div>
                   {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
-                      <AIExtractionLoader message="Analyzing job description" />
+                      <AIExtractionLoader
+                        message={
+                          useEnhancedExtraction
+                            ? "Extracting with enhanced AI mode"
+                            : "Analyzing job description"
+                        }
+                      />
                     </div>
                   )}
                 </div>

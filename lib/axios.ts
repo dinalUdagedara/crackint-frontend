@@ -11,5 +11,5 @@ export const axiosAuth = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 25000,
+  timeout: 45000,
 })

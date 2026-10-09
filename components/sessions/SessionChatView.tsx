@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
+import { getSessionWithMessages, streamChatTurn } from "@/services/sessions.service"
 import { generateCoverLetter } from "@/services/cover-letter.service"
 import { getResume } from "@/services/resume-uploader.service"
 import { getJobPosting } from "@/services/job-postings.service"
@@ -61,6 +61,12 @@ export function SessionChatView() {
   const [pendingMessage, setPendingMessage] = useState<Message | null>(null)
   const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false)
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
+  // Streaming turn: assistant text shown as it is generated, replaced by stored messages.
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [draft, setDraft] = useState<{ feedback: string; question: string } | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   const { data: resumeData, isLoading: isResumeLoading } = useQuery({
     queryKey: ["resume", session?.resume_id],
@@ -142,10 +148,10 @@ export function SessionChatView() {
   }, [session?.messages?.length])
 
   useEffect(() => {
-    if (messagesEndRef.current && pendingMessage) {
+    if (messagesEndRef.current && (pendingMessage || draft)) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [pendingMessage])
+  }, [pendingMessage, draft?.feedback.length, draft?.question.length, draft])
 
   async function refreshSession() {
     if (!sessionId) return
@@ -189,55 +195,78 @@ export function SessionChatView() {
     }
   }
 
-  const chatMutation = useMutation({
-    mutationFn: async (args: { content: string; preferDifficulty?: "easy" | "medium" | "hard" }) => {
-      const { content, preferDifficulty } = args
-      if (!sessionId) {
-        throw new Error("Session not found")
-      }
-      const trimmed = content.trim()
-      if (!trimmed) {
-        throw new Error("Please enter a message to send.")
-      }
-
-      const res = await postChatTurn(
-        axiosAuth,
+  async function sendStreamingTurn(
+    content: string,
+    preferDifficulty?: "easy" | "medium" | "hard"
+  ) {
+    if (!sessionId) return
+    const controller = new AbortController()
+    abortRef.current = controller
+    setIsStreaming(true)
+    setDraft({ feedback: "", question: "" })
+    let failed = false
+    try {
+      await streamChatTurn(
+        authSession?.accessToken,
         sessionId,
-        trimmed,
-        preferDifficulty ? { prefer_difficulty: preferDifficulty } : undefined,
+        content,
+        (ev) => {
+          switch (ev.event) {
+            case "message": {
+              const msg: Message = {
+                ...ev.data.message,
+                metadata: ev.data.message.metadata ?? ev.data.message.meta ?? {},
+              }
+              if (msg.sender === "USER") setPendingMessage(null)
+              setSession((prev) =>
+                prev ? { ...prev, messages: [...prev.messages, msg] } : prev
+              )
+              setDraft((d) =>
+                d && msg.type === "QUESTION"
+                  ? { ...d, question: "" }
+                  : d && msg.type === "FEEDBACK"
+                    ? { ...d, feedback: "" }
+                    : d
+              )
+              break
+            }
+            case "feedback.delta":
+              setDraft((d) => ({
+                feedback: (d?.feedback ?? "") + ev.data.text,
+                question: d?.question ?? "",
+              }))
+              break
+            case "question.delta":
+              setDraft((d) => ({
+                feedback: d?.feedback ?? "",
+                question: (d?.question ?? "") + ev.data.text,
+              }))
+              break
+            case "error":
+              failed = true
+              toast.error(ev.data.detail || "Failed to get a reply.")
+              break
+          }
+        },
+        { prefer_difficulty: preferDifficulty, signal: controller.signal }
       )
-      if (!res.success || !res.payload) {
-        throw new Error(res.message || "Failed to send message.")
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        failed = true
+        toast.error(err instanceof Error ? err.message : "Failed to send message.")
       }
-      return res.payload
-    },
-    onSuccess: async (payload) => {
-      // Optimistically append new messages if we already have a session in memory,
-      // otherwise fall back to full refresh.
-      if (session && payload?.new_messages?.length) {
-        // Backend v2 returns message meta as "meta"; normalize to "metadata" for UI.
-        const normalized = payload.new_messages.map((msg) => ({
-          ...msg,
-          metadata: msg.metadata ?? msg.meta ?? {},
-        }))
-        setSession({
-          ...session,
-          messages: [...session.messages, ...normalized],
-        })
-      } else {
-        await refreshSession()
-      }
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || "Failed to send message.")
-    },
-    onSettled: () => {
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null
+      setIsStreaming(false)
+      setDraft(null)
       setPendingMessage(null)
-    },
-  })
+      // Resync with what the server stored if the turn did not finish cleanly.
+      if (failed) await refreshSession()
+    }
+  }
 
   async function handleSendMessage(message: string) {
-    if (!sessionId || chatMutation.isPending) return
+    if (!sessionId || isStreaming) return
 
     const trimmed = message.trim()
     if (!trimmed) {
@@ -257,11 +286,10 @@ export function SessionChatView() {
     }
 
     setPendingMessage(tempMessage)
-    chatMutation.mutate({
-      content: trimmed,
-      preferDifficulty:
-        session && session.mode === "TUTOR_CHAT" ? undefined : difficulty ?? undefined,
-    })
+    void sendStreamingTurn(
+      trimmed,
+      session && session.mode === "TUTOR_CHAT" ? undefined : difficulty ?? undefined
+    )
   }
 
   if (isLoading && !session) {
@@ -514,6 +542,8 @@ export function SessionChatView() {
         session={session}
         messagesEndRef={messagesEndRef}
         pendingMessage={pendingMessage}
+        draft={draft}
+        isStreaming={isStreaming}
         userAvatarUrl={authSession?.user?.profileImageUrl}
         userName={authSession?.user?.name}
         userEmail={authSession?.user?.email}
@@ -521,7 +551,7 @@ export function SessionChatView() {
 
       <ChatInputView
         onSend={handleSendMessage}
-        disabled={chatMutation.isPending}
+        disabled={isStreaming}
         mode={session.mode as any}
         onModeChange={(newMode) => updateModeMutation.mutate(newMode)}
         disableTargeted={!(session.job_posting_id && session.resume_id)}

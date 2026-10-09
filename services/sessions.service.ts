@@ -1,4 +1,6 @@
 import axios, { type AxiosInstance } from "axios"
+import { API_V1, handle401 } from "@/lib/api-client"
+import { readSSE } from "@/lib/sse"
 import type {
   ApiResponse,
   PrepSession,
@@ -193,6 +195,54 @@ export async function postChatTurn(
   } catch (e) {
     return throwOnAxiosError(e)
   }
+}
+
+export type ChatStreamEvent =
+  | { event: "message"; data: { message: Message } }
+  | { event: "feedback.delta"; data: { text: string } }
+  | { event: "question.delta"; data: { text: string } }
+  | { event: "done"; data: { status: string } }
+  | { event: "error"; data: { status: number; detail: string } }
+
+/**
+ * Streaming chat turn (POST /sessions/{id}/chat/stream, Server-Sent Events).
+ * Stores the same messages as postChatTurn; calls onEvent as text is generated.
+ * Throws for HTTP errors before the stream starts (401, 404, 429, ...).
+ */
+export async function streamChatTurn(
+  accessToken: string | undefined,
+  sessionId: string,
+  content: string,
+  onEvent: (event: ChatStreamEvent) => void,
+  options?: { prefer_difficulty?: "easy" | "medium" | "hard"; signal?: AbortSignal }
+): Promise<void> {
+  const body = options?.prefer_difficulty
+    ? { content, prefer_difficulty: options.prefer_difficulty }
+    : { content }
+  const res = await fetch(`${API_V1}/sessions/${sessionId}/chat/stream`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: JSON.stringify(body),
+    signal: options?.signal,
+  })
+  if (!res.ok || !res.body) {
+    if (res.status === 401) handle401()
+    let message = `Request failed with status ${res.status}`
+    try {
+      const data = await res.json()
+      message = data?.detail ?? data?.message ?? message
+    } catch {
+      // non-JSON error body
+    }
+    throw new SessionsError(message, res.status)
+  }
+  await readSSE(res.body, ({ event, data }) => {
+    onEvent({ event, data: JSON.parse(data) } as ChatStreamEvent)
+  })
 }
 
 export async function deleteSession(

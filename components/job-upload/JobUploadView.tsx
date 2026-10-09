@@ -85,14 +85,14 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
 
     if (selectedFile) {
       performExtraction(() =>
-        extractJobFromFile(selectedFile)
+        extractJobFromFile(axiosAuth, selectedFile)
       )
     } else if (trimmed) {
       performExtraction(() =>
-        extractJobFromText(trimmed)
+        extractJobFromText(axiosAuth, trimmed)
       )
     }
-  }, [selectedFile, pasteText, canExtract, performExtraction])
+  }, [selectedFile, pasteText, canExtract, performExtraction, axiosAuth])
 
   const handleReplaceJobPoster = useCallback(() => {
     setResult(null)

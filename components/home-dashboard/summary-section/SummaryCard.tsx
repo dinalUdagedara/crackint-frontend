@@ -3,8 +3,7 @@
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { MessageCircle, ShieldAlert, Sparkles } from "lucide-react"
-import type { HomeSummaryCard } from "@/types/api.types"
-import type { Summary } from "./summaries-hardcoded"
+import type { HomeSummaryCard, HomeSummaryCardItem } from "@/types/api.types"
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,7 +23,7 @@ const MAX_ITEMS_PER_CARD = 3
 const MAX_TITLE_LENGTH = 35
 
 type SummaryCardProps = {
-  summary: Summary
+  summary: HomeSummaryCard
   className?: string
   maxItems?: number
 }
@@ -53,13 +52,11 @@ const EMPTY_STATE_CONFIG: Record<
   },
 }
 
-function getEmptyConfig(summary: Summary) {
-  const id = (summary as HomeSummaryCard).id
+function getEmptyConfig(summary: HomeSummaryCard) {
+  const id = summary.id
   if (id && id in EMPTY_STATE_CONFIG) return EMPTY_STATE_CONFIG[id]
   return EMPTY_STATE_CONFIG.readiness_tracker
 }
-
-type ItemWithAction = Summary["items"][number] & { action_type?: string | null }
 
 export default function SummaryCard({
   summary,
@@ -69,22 +66,13 @@ export default function SummaryCard({
   const Icon = iconMap[summary.icon]
   const router = useRouter()
   const allItems = summary.items
-  const listItems = allItems.filter(
-    (item) => (item as ItemWithAction).action_type == null
-  )
-  const ctaItems = allItems.filter(
-    (item) => (item as ItemWithAction).action_type != null
-  )
+  const listItems = allItems.filter((item) => item.action_type == null)
+  const ctaItems = allItems.filter((item) => item.action_type != null)
   const displayListItems = listItems.slice(0, maxItems)
-  const totalItemCount = allItems.length
-  const showEmptyState = totalItemCount < 3
   const isEmpty = displayListItems.length === 0 && ctaItems.length === 0
-  const singleCtaOnly =
-    !showEmptyState &&
-    displayListItems.length === 0 &&
-    ctaItems.length === 1
+  const singleCtaOnly = displayListItems.length === 0 && ctaItems.length === 1
 
-  function resolveHref(item: Summary["items"][number]): string | undefined {
+  function resolveHref(item: HomeSummaryCardItem): string | undefined {
     if (item.href) return item.href
     if (item.session_id) return `/sessions/${item.session_id}`
     if (item.resume_id) return `/resumes/${item.resume_id}`
@@ -92,7 +80,7 @@ export default function SummaryCard({
     return undefined
   }
 
-  function handleItemClick(item: Summary["items"][number]) {
+  function handleItemClick(item: HomeSummaryCardItem) {
     const href = resolveHref(item)
     if (href) router.push(href)
   }
@@ -142,7 +130,7 @@ export default function SummaryCard({
         <h2 className="min-w-0 truncate text-base font-semibold">{summary.title}</h2>
       </div>
 
-      {showEmptyState || isEmpty ? (
+      {isEmpty ? (
         <div className="flex min-h-[120px] flex-1 flex-col justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 px-3 py-4 text-center">
           <p className="text-sm font-medium text-foreground">{emptyConfig.title}</p>
           <p className="text-xs text-muted-foreground wrap-break-word">{emptyConfig.description}</p>

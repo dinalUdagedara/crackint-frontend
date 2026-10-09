@@ -154,6 +154,7 @@ export interface PrepSession {
   job_posting_id: string | null;
   mode: PrepSessionMode;
   status: PrepSessionStatus;
+  role_level?: RoleLevel | null;
   readiness_score: number | null;
   summary: PrepSessionSummary | null;
   created_at: string;
@@ -167,11 +168,14 @@ export interface PrepSessionCreate {
   resume_id: string | null;
   job_posting_id: string | null;
   mode: PrepSessionMode;
+  /** Omit to infer from the job posting. */
+  role_level?: RoleLevel;
 }
 
 export interface PrepSessionUpdate {
   title?: string;
   mode?: PrepSessionMode;
+  role_level?: RoleLevel;
 }
 
 export type MessageSender = "USER" | "ASSISTANT";
@@ -211,7 +215,7 @@ export interface PrepSessionWithMessages extends PrepSession {
 
 // ---- Session Q&A (LLM) ----
 
-/** Role level for next-question (optional in body). */
+/** Seniority the interview questions target (session role_level; next-question override). */
 export type RoleLevel = "INTERN" | "ASE" | "SSE" | "OTHER";
 
 /** Override requested difficulty when a next question is generated (next-question, chat, send). */

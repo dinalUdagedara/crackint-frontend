@@ -28,6 +28,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const meta = message.metadata ?? message.meta ?? {}
   const difficulty = meta.difficulty
   const questionType = meta.question_type
+  const difficultyReason = meta.difficulty_reason
 
   const [copied, setCopied] = useState(false)
 
@@ -81,6 +82,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {questionType && (
             <span className="inline-flex rounded-full bg-muted px-2 py-0.5 font-medium capitalize">
               {questionType.replace(/_/g, " ")}
+            </span>
+          )}
+          {(difficultyReason === "step_up" || difficultyReason === "step_down") && (
+            <span
+              className="inline-flex rounded-full bg-muted px-2 py-0.5 font-medium"
+              title="Adjusted based on your recent answers"
+            >
+              {difficultyReason === "step_up" ? "↑ Harder" : "↓ Easier"}
             </span>
           )}
         </div>

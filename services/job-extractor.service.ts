@@ -1,9 +1,8 @@
+import axios, { type AxiosInstance } from "axios"
+import { getAxiosErrorMessage } from "@/lib/axios-error-message"
 import { getResumeOrJobUploadFileError } from "@/lib/upload-file-validation"
 import type { ApiResponse } from "@/types/api.types"
 import type { JobExtractPayload } from "@/types/api.types"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
-const JOBS_BASE = `${API_BASE}/api/v1/jobs`
 
 export class JobExtractError extends Error {
   constructor(
@@ -16,20 +15,39 @@ export class JobExtractError extends Error {
   }
 }
 
-async function parseResponse<T>(res: Response): Promise<ApiResponse<T>> {
-  const data = (await res.json()) as ApiResponse<T>
-  if (!res.ok) {
+function throwOnAxiosError(e: unknown): never {
+  if (axios.isAxiosError(e) && e.response) {
+    const d = (e.response.data ?? {}) as ApiResponse<unknown>
     throw new JobExtractError(
-      data.message ?? `Request failed with status ${res.status}`,
-      res.status,
-      data.payload
+      getAxiosErrorMessage(e, `Request failed with status ${e.response.status}`),
+      e.response.status,
+      d.payload
     )
   }
-  return data
+  throw e
+}
+
+async function postExtract(
+  axiosAuth: AxiosInstance,
+  formData: FormData,
+  useValidation: boolean
+): Promise<ApiResponse<JobExtractPayload>> {
+  const url = `/jobs/extract${useValidation ? "?validate=true" : ""}`
+  try {
+    const { data } = await axiosAuth.post<ApiResponse<JobExtractPayload>>(
+      url,
+      formData,
+      { headers: { "Content-Type": undefined } }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
 
 /** Extract job entities from a PDF, Word (.docx), or image file. See `upload-file-validation`. */
 export async function extractJobFromFile(
+  axiosAuth: AxiosInstance,
   file: File,
   useValidation = false
 ): Promise<ApiResponse<JobExtractPayload>> {
@@ -40,18 +58,12 @@ export async function extractJobFromFile(
 
   const formData = new FormData()
   formData.append("file", file)
-
-  const url = `${JOBS_BASE}/extract${useValidation ? "?validate=true" : ""}`
-  const res = await fetch(url, {
-    method: "POST",
-    body: formData,
-  })
-
-  return parseResponse<JobExtractPayload>(res)
+  return postExtract(axiosAuth, formData, useValidation)
 }
 
 /** Extract job entities from raw text. */
 export async function extractJobFromText(
+  axiosAuth: AxiosInstance,
   text: string,
   useValidation = false
 ): Promise<ApiResponse<JobExtractPayload>> {
@@ -64,12 +76,5 @@ export async function extractJobFromText(
 
   const formData = new FormData()
   formData.append("text", trimmed)
-
-  const url = `${JOBS_BASE}/extract${useValidation ? "?validate=true" : ""}`
-  const res = await fetch(url, {
-    method: "POST",
-    body: formData,
-  })
-
-  return parseResponse<JobExtractPayload>(res)
+  return postExtract(axiosAuth, formData, useValidation)
 }

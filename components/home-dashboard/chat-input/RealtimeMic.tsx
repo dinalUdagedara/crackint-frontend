@@ -203,6 +203,22 @@ export const RealtimeMic = forwardRef(({ onUpdateText, disabled }: RealtimeMicPr
     };
   }, [isConnected, subscribeToEvent, unsubscribeFromEvent, handleTranscribeStream]);
 
+  // Server ends recordings that run past its max duration.
+  useEffect(() => {
+    const handleTimeout = () => {
+      stopAudioRecording();
+      toast.info("Recording stopped: maximum length reached.");
+    };
+    if (isConnected) {
+      subscribeToEvent("STT_TIMEOUT", handleTimeout);
+    }
+    return () => {
+      if (isConnected) {
+        unsubscribeFromEvent("STT_TIMEOUT", handleTimeout);
+      }
+    };
+  }, [isConnected, subscribeToEvent, unsubscribeFromEvent, stopAudioRecording]);
+
   useEffect(() => {
     // Whenever transcription updates, push it back to the parent
     let textToUpdateValue = "";

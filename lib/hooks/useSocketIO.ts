@@ -10,12 +10,22 @@ interface SocketHook {
   socket: Socket | null;
 }
 
-const useSocketIO = (url: string): SocketHook => {
+/**
+ * Connects only when an access token is available; the backend refuses
+ * unauthenticated sockets. Reconnects when the token changes.
+ */
+const useSocketIO = (url: string, token?: string): SocketHook => {
   const [isConnected, setIsConnected] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    if (!token) {
+      return;
+    }
+
     socketRef.current = io(url, {
+      auth: { token },
       transports: ["websocket"],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -23,8 +33,10 @@ const useSocketIO = (url: string): SocketHook => {
       path: "/ws/socket.io"
     });
 
-    socketRef.current.on("connect", () => {
+    const current = socketRef.current;
+    current.on("connect", () => {
       setIsConnected(true);
+      setSocket(current);
     });
 
     socketRef.current.on("disconnect", () => {
@@ -36,12 +48,19 @@ const useSocketIO = (url: string): SocketHook => {
       console.error("DEBUG WebSocket error:", error);
     });
 
+    socketRef.current.on("connect_error", (error: Error) => {
+      console.error("DEBUG WebSocket connect error:", error.message);
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
+      setIsConnected(false);
+      setSocket(null);
     };
-  }, [url]);
+  }, [url, token]);
 
   const sendMessage = useCallback(<T>(event: string, data: T): void => {
     if (socketRef.current) {
@@ -72,7 +91,7 @@ const useSocketIO = (url: string): SocketHook => {
     sendMessage,
     subscribeToEvent,
     unsubscribeFromEvent,
-    socket: socketRef.current
+    socket
   };
 };
 

@@ -61,11 +61,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check out backend (same target branch)
+      # Backend branch: release PRs (develop -> main) test against backend develop (its matching
+      # release is not on main yet); other PRs into main use main; everything else uses develop.
+      # Merge the backend release before the frontend one.
+      - name: Check out backend (matching branch)
         uses: actions/checkout@v4
         with:
           repository: dinalUdagedara/crackint-backend
-          ref: ${{ github.base_ref == 'main' && 'main' || (github.ref_name == 'main' && 'main' || 'develop') }}
+          ref: ${{ github.event_name == 'pull_request' && (github.head_ref == 'develop' && 'develop' || (github.base_ref == 'main' && 'main' || 'develop')) || (github.ref_name == 'main' && 'main' || 'develop') }}
           path: backend
 
       - uses: actions/setup-python@v5

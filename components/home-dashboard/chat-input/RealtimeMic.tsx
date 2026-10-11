@@ -235,6 +235,7 @@ export const RealtimeMic = forwardRef(({ onUpdateText, disabled }: RealtimeMicPr
   }, [transcription, partialTranscription]);
 
   useImperativeHandle(ref, () => ({
+    startRecording: startAudioRecording,
     stopRecording: stopAudioRecording,
     resetTranscription: resetTranscription,
   }));

@@ -50,7 +50,7 @@ function formatSessionLabel(session: PrepSession): string {
     (summary && typeof summary.title === "string" && summary.title.trim()) || null
   if (title) return title
   const modeLabel =
-    session.mode === "QUICK_PRACTICE" ? "Quick practice" : session.mode === "TUTOR_CHAT" ? "Tutor chat" : "Targeted"
+    session.mode === "QUICK_PRACTICE" ? "Quick practice" : session.mode === "TUTOR_CHAT" ? "Tutor chat" : session.mode === "VOICE_MOCK" ? "Voice mock" : "Targeted"
   return `${modeLabel} • ${session.status}`
 }
 

@@ -215,11 +215,16 @@ export async function streamChatTurn(
   sessionId: string,
   content: string,
   onEvent: (event: ChatStreamEvent) => void,
-  options?: { prefer_difficulty?: "easy" | "medium" | "hard"; signal?: AbortSignal }
+  options?: {
+    prefer_difficulty?: "easy" | "medium" | "hard"
+    /** Spoken answers (voice mock): seconds spent speaking, enables delivery metrics. */
+    speaking_seconds?: number
+    signal?: AbortSignal
+  }
 ): Promise<void> {
-  const body = options?.prefer_difficulty
-    ? { content, prefer_difficulty: options.prefer_difficulty }
-    : { content }
+  const body: Record<string, unknown> = { content }
+  if (options?.prefer_difficulty) body.prefer_difficulty = options.prefer_difficulty
+  if (options?.speaking_seconds != null) body.speaking_seconds = options.speaking_seconds
   const res = await fetch(`${API_V1}/sessions/${sessionId}/chat/stream`, {
     method: "POST",
     headers: {

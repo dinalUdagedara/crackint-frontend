@@ -74,6 +74,7 @@ import { JobPostingEntitiesCard } from "./JobPostingEntitiesCard"
 import { JobPostingSkillGapSection } from "./JobPostingSkillGapSection"
 import { JobPostingReadinessSection } from "./JobPostingReadinessSection"
 import { JobPostingCoverLetterSection } from "./JobPostingCoverLetterSection"
+import { JobPostingPrepPlanSection } from "./JobPostingPrepPlanSection"
 import { JobPostingRawDescription } from "./JobPostingRawDescription"
 
 const COVER_GRADIENTS = [
@@ -552,6 +553,8 @@ export function JobPostingDetail() {
               </DropdownMenu>
             )}
           </div>
+
+          <JobPostingPrepPlanSection jobPostingId={job.id} />
 
           <JobPostingSkillGapSection
             resumes={resumes}

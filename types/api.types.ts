@@ -89,6 +89,35 @@ export interface JobPosting {
 
 export type JobPostingListPayload = JobPosting[];
 
+/** One day in GET /job-postings/{id}/prep-plan. */
+export interface PrepPlanTask {
+  /** Calendar date (YYYY-MM-DD). */
+  date: string;
+  day_index: number;
+  kind: "skill_gap" | "weak_topic" | "behavioral" | "practice" | "mock_interview" | "day_of" | "deadline";
+  title: string;
+  description: string;
+  minutes: number;
+  focus_topics: string[];
+  mode: "TARGETED" | "QUICK_PRACTICE";
+  done: boolean;
+  is_today: boolean;
+}
+
+/** GET /job-postings/{id}/prep-plan: recomputed on every request. */
+export interface PrepPlan {
+  job_posting_id: string;
+  resume_id: string | null;
+  target_date: string | null;
+  target_type: "interview" | "deadline" | null;
+  days_left: number | null;
+  avg_score: number | null;
+  missing_skills: string[];
+  weak_topics: string[];
+  /** Empty when the job has no upcoming interview or deadline. */
+  tasks: PrepPlanTask[];
+}
+
 /** Item from GET /job-postings/near-deadline (deadline or interview in next N days). */
 export interface NearDeadlineItem {
   job: JobPosting;

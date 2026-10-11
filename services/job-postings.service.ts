@@ -6,6 +6,7 @@ import type {
   JobPostingListPayload,
   JobPostingUpdate,
   NearDeadlinePayload,
+  PrepPlan,
 } from "@/types/api.types"
 
 export class JobPostingsError extends Error {
@@ -135,6 +136,21 @@ export async function getNearDeadlineJobPostings(
     const { data } = await axiosAuth.get<ApiResponse<NearDeadlinePayload>>(
       "/job-postings/near-deadline",
       { params: { days: clamped } }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
+/** Day-by-day prep plan until the interview or deadline (GET /job-postings/{id}/prep-plan). */
+export async function getPrepPlan(
+  axiosAuth: AxiosInstance,
+  jobPostingId: string
+): Promise<ApiResponse<PrepPlan>> {
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<PrepPlan>>(
+      `/job-postings/${jobPostingId}/prep-plan`
     )
     return data
   } catch (e) {

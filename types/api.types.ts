@@ -167,7 +167,7 @@ export interface JobPostingUpdate {
 
 // ---- Prep sessions & messages ----
 
-export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT";
+export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT" | "VOICE_MOCK";
 
 export type PrepSessionStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
 
@@ -300,6 +300,24 @@ export interface StarBreakdown {
   note?: string | null;
 }
 
+/** How a spoken answer was delivered (voice mock interviews). */
+export interface DeliveryInfo {
+  speaking_seconds: number | null;
+  word_count: number | null;
+  wpm: number | null;
+  pace: "slow" | "good" | "fast" | null;
+  filler_count: number;
+  fillers: Record<string, number>;
+}
+
+export interface DeliverySummary {
+  spoken_answers: number;
+  average_wpm: number | null;
+  pace: "slow" | "good" | "fast" | null;
+  total_fillers: number;
+  top_fillers: Record<string, number>;
+}
+
 export interface SessionReportItem {
   index: number;
   question_message_id: string;
@@ -314,6 +332,8 @@ export interface SessionReportItem {
   model_answer: string | null;
   /** Behavioral questions only. */
   star: StarBreakdown | null;
+  /** Spoken answers only. */
+  delivery?: DeliveryInfo | null;
 }
 
 export interface SessionReport {
@@ -326,6 +346,8 @@ export interface SessionReport {
   strengths: string[];
   weak_topics: string[];
   summary: string | null;
+  /** Present when the session had spoken answers (voice mock). */
+  delivery?: DeliverySummary | null;
   items: SessionReportItem[];
 }
 

@@ -63,6 +63,8 @@ export const SessionMessagesArea: React.FC<SessionMessagesAreaProps> = ({
             <p className="max-w-sm text-sm text-muted-foreground">
               {session.mode === "TUTOR_CHAT"
                 ? "Ask the coach anything about your career, resume, or interview prep."
+                : session.mode === "VOICE_MOCK"
+                  ? "Press “Start interview” below. Each question is read aloud; answer by speaking."
                 : 'Type a message below to get your first interview question, or say something like "Hi" to begin. Then answer each question to receive feedback and improve.'}
             </p>
           </div>

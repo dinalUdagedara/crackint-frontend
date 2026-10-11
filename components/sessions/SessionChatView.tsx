@@ -16,6 +16,7 @@ import {
   BarChart2,
   Flag,
   ClipboardCheck,
+  Mic,
 } from "lucide-react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -23,11 +24,12 @@ import { completeSession, getSessionWithMessages, streamChatTurn } from "@/servi
 import { generateCoverLetter } from "@/services/cover-letter.service"
 import { getResume } from "@/services/resume-uploader.service"
 import { getJobPosting } from "@/services/job-postings.service"
-import type { Message, PrepSessionWithMessages } from "@/types/api.types"
+import type { Message, PrepSessionMode, PrepSessionWithMessages } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import ChatInputView from "@/components/home-dashboard/chat-input/ChatInputView"
 import { EditSessionDialog } from "./EditSessionDialog"
 import { SessionMessagesArea } from "./SessionMessagesArea"
+import { VoiceInterviewPanel } from "./VoiceInterviewPanel"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,7 +90,7 @@ export function SessionChatView() {
   const jobTitle = jobData?.payload?.entities?.JOB_TITLE?.[0] || (session?.job_posting_id ? session.job_posting_id.slice(0, 8) + "..." : "None")
 
   const updateModeMutation = useMutation({
-    mutationFn: async (newMode: "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT") => {
+    mutationFn: async (newMode: PrepSessionMode) => {
       const { updateSession } = await import("@/services/sessions.service")
       const res = await updateSession(axiosAuth, sessionId as string, {
         mode: newMode,
@@ -211,11 +213,14 @@ export function SessionChatView() {
     }
   }
 
+  /** Streams one chat turn; resolves with the messages the server stored for it. */
   async function sendStreamingTurn(
     content: string,
-    preferDifficulty?: "easy" | "medium" | "hard"
-  ) {
-    if (!sessionId) return
+    preferDifficulty?: "easy" | "medium" | "hard",
+    speakingSeconds?: number
+  ): Promise<Message[]> {
+    const stored: Message[] = []
+    if (!sessionId) return stored
     const controller = new AbortController()
     abortRef.current = controller
     setIsStreaming(true)
@@ -233,6 +238,7 @@ export function SessionChatView() {
                 ...ev.data.message,
                 metadata: ev.data.message.metadata ?? ev.data.message.meta ?? {},
               }
+              stored.push(msg)
               if (msg.sender === "USER") setPendingMessage(null)
               setSession((prev) =>
                 prev ? { ...prev, messages: [...prev.messages, msg] } : prev
@@ -264,7 +270,7 @@ export function SessionChatView() {
               break
           }
         },
-        { prefer_difficulty: preferDifficulty, signal: controller.signal }
+        { prefer_difficulty: preferDifficulty, speaking_seconds: speakingSeconds, signal: controller.signal }
       )
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
@@ -279,6 +285,22 @@ export function SessionChatView() {
       // Resync with what the server stored if the turn did not finish cleanly.
       if (failed) await refreshSession()
     }
+    return stored
+  }
+
+  async function handleVoiceAnswer(text: string, speakingSeconds?: number): Promise<Message[]> {
+    if (!sessionId) return []
+    setPendingMessage({
+      id: `temp-${Date.now()}`,
+      session_id: sessionId,
+      sender: "USER",
+      type: "ANSWER",
+      content: text,
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    return sendStreamingTurn(text, undefined, speakingSeconds)
   }
 
   async function handleSendMessage(message: string) {
@@ -358,6 +380,8 @@ export function SessionChatView() {
                       >
                         {session.mode === "TUTOR_CHAT" ? (
                           <MessageSquare className="h-3 w-3" />
+                        ) : session.mode === "VOICE_MOCK" ? (
+                          <Mic className="h-3 w-3" />
                         ) : (
                           <Target className="h-3 w-3" />
                         )}
@@ -366,7 +390,9 @@ export function SessionChatView() {
                             ? "Tutor Chat"
                             : session.mode === "QUICK_PRACTICE"
                               ? "Quick Practice"
-                              : "Targeted"}
+                              : session.mode === "VOICE_MOCK"
+                                ? "Voice Mock"
+                                : "Targeted"}
                         </span>
                         <ChevronDown className="h-3 w-3" />
                       </Button>
@@ -387,10 +413,17 @@ export function SessionChatView() {
                               : "QUICK_PRACTICE",
                           )
                         }
-                        className={session.mode !== "TUTOR_CHAT" ? "bg-muted" : ""}
+                        className={session.mode === "TARGETED" || session.mode === "QUICK_PRACTICE" ? "bg-muted" : ""}
                       >
                         <Target className="mr-2 h-4 w-4" />
                         Interview Mode
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => updateModeMutation.mutate("VOICE_MOCK")}
+                        className={session.mode === "VOICE_MOCK" ? "bg-muted" : ""}
+                      >
+                        <Mic className="mr-2 h-4 w-4" />
+                        Voice Mock Interview
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -586,6 +619,14 @@ export function SessionChatView() {
         userEmail={authSession?.user?.email}
       />
 
+      {session.mode === "VOICE_MOCK" && session.status !== "COMPLETED" ? (
+        <VoiceInterviewPanel
+          lastQuestion={[...session.messages].reverse().find((m) => m.type === "QUESTION")?.content ?? null}
+          onAnswer={handleVoiceAnswer}
+          onEnd={() => void handleEndSession()}
+          accessToken={authSession?.accessToken}
+        />
+      ) : (
       <ChatInputView
         onSend={handleSendMessage}
         disabled={isStreaming}
@@ -597,6 +638,7 @@ export function SessionChatView() {
           session.mode !== "TUTOR_CHAT" ? setDifficulty : undefined
         }
       />
+      )}
 
       {session && (
         <EditSessionDialog

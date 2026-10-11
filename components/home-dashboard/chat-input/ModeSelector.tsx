@@ -7,10 +7,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, MessageSquare, Target } from "lucide-react"
+import { ChevronDown, MessageSquare, Mic, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export type SessionMode = "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT"
+export type SessionMode = "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT" | "VOICE_MOCK"
 
 interface ModeSelectorProps {
   mode: SessionMode
@@ -26,6 +26,8 @@ const getModeStyles = (currentMode: SessionMode) => {
       return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/30"
     case "QUICK_PRACTICE":
       return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/30"
+    case "VOICE_MOCK":
+      return "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400 hover:bg-violet-200 dark:hover:bg-violet-500/30"
     case "TARGETED":
       return "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-500/30"
     default:
@@ -48,11 +50,19 @@ export function ModeSelector({ mode, onModeChange, disabled, disableTargeted }: 
         >
           {mode === "TUTOR_CHAT" ? (
             <MessageSquare className="mr-1.5 h-4 w-4" />
+          ) : mode === "VOICE_MOCK" ? (
+            <Mic className="mr-1.5 h-4 w-4" />
           ) : (
             <Target className="mr-1.5 h-4 w-4" />
           )}
           <span className="font-medium">
-            {mode === "TUTOR_CHAT" ? "Tutor" : mode === "QUICK_PRACTICE" ? "Practice" : "Targeted"}
+            {mode === "TUTOR_CHAT"
+              ? "Tutor"
+              : mode === "QUICK_PRACTICE"
+                ? "Practice"
+                : mode === "VOICE_MOCK"
+                  ? "Voice"
+                  : "Targeted"}
           </span>
           <ChevronDown className="ml-1 h-3 w-3" />
         </Button>
@@ -80,6 +90,13 @@ export function ModeSelector({ mode, onModeChange, disabled, disableTargeted }: 
         >
           <Target className="mr-2 h-4 w-4" />
           Targeted Interview
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => onModeChange("VOICE_MOCK")}
+          className={mode === "VOICE_MOCK" ? "bg-muted" : ""}
+        >
+          <Mic className="mr-2 h-4 w-4" />
+          Voice Mock Interview
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

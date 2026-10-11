@@ -56,6 +56,17 @@ export function SessionReportPdfDocument({ title, jobTitle, report }: SessionRep
           </>
         ) : null}
 
+        {report.delivery ? (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Delivery</Text>
+            <Text style={pdfStyles.body}>
+              {report.delivery.average_wpm != null ? `${report.delivery.average_wpm} words/min` : "Pace not measured"}
+              {" · "}
+              {report.delivery.total_fillers} filler words across {report.delivery.spoken_answers} spoken answers
+            </Text>
+          </>
+        ) : null}
+
         {report.strengths.length ? <Text style={pdfStyles.sectionTitle}>Strengths</Text> : null}
         <BulletList items={report.strengths} />
 

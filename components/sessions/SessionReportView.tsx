@@ -26,7 +26,7 @@ import {
   getSessionReport,
 } from "@/services/sessions.service"
 import { getJobPosting } from "@/services/job-postings.service"
-import type { SessionReportItem, StarBreakdown } from "@/types/api.types"
+import type { DeliveryInfo, DeliverySummary, SessionReportItem, StarBreakdown } from "@/types/api.types"
 import { cn } from "@/lib/utils"
 
 function scoreClass(score: number | null) {
@@ -75,6 +75,47 @@ function StarChips({ star }: { star: StarBreakdown }) {
   )
 }
 
+const PACE_LABEL = { slow: "A bit slow", good: "Good pace", fast: "A bit fast" } as const
+
+function fillerText(fillers: Record<string, number>) {
+  const entries = Object.entries(fillers)
+  return entries.length ? entries.map(([w, n]) => `“${w}” ×${n}`).join(", ") : "none"
+}
+
+function DeliveryCard({ delivery }: { delivery: DeliverySummary }) {
+  return (
+    <Card className="flex flex-col gap-2 p-4">
+      <span className="text-sm font-medium">Delivery</span>
+      <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+        <div>
+          <span className="block text-xs text-muted-foreground">Pace</span>
+          {delivery.average_wpm != null ? `${delivery.average_wpm} words/min` : "—"}
+          {delivery.pace && <span className="text-muted-foreground"> · {PACE_LABEL[delivery.pace]}</span>}
+        </div>
+        <div>
+          <span className="block text-xs text-muted-foreground">Filler words</span>
+          {delivery.total_fillers} across {delivery.spoken_answers} answer{delivery.spoken_answers === 1 ? "" : "s"}
+        </div>
+        <div>
+          <span className="block text-xs text-muted-foreground">Most used</span>
+          {fillerText(delivery.top_fillers)}
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">Aim for about 110–170 words per minute and few filler words.</p>
+    </Card>
+  )
+}
+
+function DeliveryLine({ delivery }: { delivery: DeliveryInfo }) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      {delivery.wpm != null ? `${delivery.wpm} words/min` : "Pace not measured"}
+      {delivery.pace ? ` (${PACE_LABEL[delivery.pace].toLowerCase()})` : ""} · {delivery.word_count ?? 0} words · filler
+      words: {fillerText(delivery.fillers)}
+    </p>
+  )
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
@@ -88,7 +129,10 @@ function ItemDetail({ item }: { item: SessionReportItem }) {
   return (
     <div className="flex flex-col gap-4 pb-2">
       <Section title="Question">{item.question}</Section>
-      <Section title="Your answer">{item.answer}</Section>
+      <Section title="Your answer">
+        {item.answer}
+        {item.delivery && <DeliveryLine delivery={item.delivery} />}
+      </Section>
       <Section title="Feedback">{item.feedback}</Section>
       {item.star && (
         <Section title="STAR structure">
@@ -301,6 +345,8 @@ export function SessionReportView() {
           </Card>
         </div>
       )}
+
+      {report.delivery && <DeliveryCard delivery={report.delivery} />}
 
       {report.generated_by === "basic" && report.items.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">

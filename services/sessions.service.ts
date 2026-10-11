@@ -16,6 +16,7 @@ import type {
   EvaluateAnswerPayload,
   SendReplyPayload,
   ChatTurnPayload,
+  SessionReport,
 } from "@/types/api.types"
 
 export class SessionsError extends Error {
@@ -243,6 +244,37 @@ export async function streamChatTurn(
   await readSSE(res.body, ({ event, data }) => {
     onEvent({ event, data: JSON.parse(data) } as ChatStreamEvent)
   })
+}
+
+/** Mark the session COMPLETED and generate (or return the stored) end-of-session report. */
+export async function completeSession(
+  axiosAuth: AxiosInstance,
+  id: string,
+  options?: { regenerate?: boolean }
+): Promise<ApiResponse<SessionReport>> {
+  try {
+    const { data } = await axiosAuth.post<ApiResponse<SessionReport>>(
+      `/sessions/${id}/complete`,
+      null,
+      { params: options?.regenerate ? { regenerate: true } : undefined }
+    )
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
+}
+
+/** Stored report; rejects with status 404 until the session is completed. */
+export async function getSessionReport(
+  axiosAuth: AxiosInstance,
+  id: string
+): Promise<ApiResponse<SessionReport>> {
+  try {
+    const { data } = await axiosAuth.get<ApiResponse<SessionReport>>(`/sessions/${id}/report`)
+    return data
+  } catch (e) {
+    return throwOnAxiosError(e)
+  }
 }
 
 export async function deleteSession(

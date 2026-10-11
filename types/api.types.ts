@@ -155,6 +155,8 @@ export interface PrepSession {
   mode: PrepSessionMode;
   status: PrepSessionStatus;
   role_level?: RoleLevel | null;
+  /** Topics this session prioritizes (e.g. weak topics carried over from a report). */
+  focus_topics?: string[];
   readiness_score: number | null;
   summary: PrepSessionSummary | null;
   created_at: string;
@@ -170,6 +172,7 @@ export interface PrepSessionCreate {
   mode: PrepSessionMode;
   /** Omit to infer from the job posting. */
   role_level?: RoleLevel;
+  focus_topics?: string[];
 }
 
 export interface PrepSessionUpdate {
@@ -256,6 +259,45 @@ export interface SendReplyPayload {
   dimension_tags: string[] | null;
   message_id: string | null;
   redirect: boolean;
+}
+
+// ---- End-of-session report ----
+
+export interface StarBreakdown {
+  situation: boolean;
+  task: boolean;
+  action: boolean;
+  result: boolean;
+  note?: string | null;
+}
+
+export interface SessionReportItem {
+  index: number;
+  question_message_id: string;
+  question: string;
+  answer: string;
+  feedback: string;
+  score: number | null;
+  difficulty: string | null;
+  question_type: string | null;
+  dimension_tags: string[];
+  topic: string | null;
+  model_answer: string | null;
+  /** Behavioral questions only. */
+  star: StarBreakdown | null;
+}
+
+export interface SessionReport {
+  generated_at: string;
+  /** "basic" when the AI was unavailable: no model answers or STAR breakdowns. */
+  generated_by: "llm" | "basic";
+  average_score: number | null;
+  questions_answered: number;
+  questions_skipped: number;
+  strengths: string[];
+  weak_topics: string[];
+  summary: string | null;
+  items: SessionReportItem[];
 }
 
 export interface ChatTurnPayload {

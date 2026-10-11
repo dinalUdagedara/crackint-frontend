@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import Link from "next/link"
@@ -14,10 +14,12 @@ import {
   Target,
   FileText,
   BarChart2,
+  Flag,
+  ClipboardCheck,
 } from "lucide-react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { getSessionWithMessages, streamChatTurn } from "@/services/sessions.service"
+import { completeSession, getSessionWithMessages, streamChatTurn } from "@/services/sessions.service"
 import { generateCoverLetter } from "@/services/cover-letter.service"
 import { getResume } from "@/services/resume-uploader.service"
 import { getJobPosting } from "@/services/job-postings.service"
@@ -60,6 +62,8 @@ export function SessionChatView() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<Message | null>(null)
   const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
+  const router = useRouter()
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   // Streaming turn: assistant text shown as it is generated, replaced by stored messages.
   const [isStreaming, setIsStreaming] = useState(false)
@@ -169,6 +173,18 @@ export function SessionChatView() {
 
   // Advanced mode is now a small toggle in the input; when enabled,
   // we send prefer_difficulty=\"hard\" on the next chat turn.
+
+  async function handleEndSession() {
+    if (!sessionId || isCompleting || isStreaming) return
+    setIsCompleting(true)
+    try {
+      await completeSession(axiosAuth, sessionId)
+      router.push(`/sessions/${sessionId}/report`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not end the session.")
+      setIsCompleting(false)
+    }
+  }
 
   async function handleGenerateCoverLetter() {
     if (!sessionId || isGeneratingCoverLetter) return
@@ -474,6 +490,27 @@ export function SessionChatView() {
                     </span>
                   </div>
                   <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {session.status === "COMPLETED" ? (
+                      <Button variant="outline" size="xs" className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]" asChild>
+                        <Link href={`/sessions/${session.id}/report`}>
+                          <ClipboardCheck className="h-3 w-3" />
+                          <span>View report</span>
+                        </Link>
+                      </Button>
+                    ) : (
+                      session.mode !== "TUTOR_CHAT" && (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]"
+                          onClick={handleEndSession}
+                          disabled={isCompleting || isStreaming}
+                        >
+                          {isCompleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Flag className="h-3 w-3" />}
+                          <span>{isCompleting ? "Building report…" : "End session"}</span>
+                        </Button>
+                      )
+                    )}
                     {session.resume_id && session.job_posting_id && (
                       <Button variant="outline" size="xs" className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]" asChild>
                         <Link

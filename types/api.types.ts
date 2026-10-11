@@ -436,24 +436,35 @@ export interface ReadinessTrendItem {
 
 export interface HomeSummaryCardItem {
   title: string;
-  description?: string;
   href?: string;
   session_id?: string;
   resume_id?: string;
   job_posting_id?: string;
-  /** e.g. "open_cv" | "start_session" when the item is a primary CTA with no real data yet */
+  /** e.g. "open_cv" | "start_session" when the item is a primary CTA with no real data yet;
+   *  "start_focus_session" for Practice Next items (start a session focused on `topic`). */
   action_type?: string | null;
+  topic?: string | null;
+  description?: string | null;
 }
 
 export interface HomeSummaryCard {
   id?: string;
   title: string;
-  icon: "messages" | "sparkles" | "shield";
+  icon: "messages" | "sparkles" | "shield" | "target";
   items: HomeSummaryCardItem[];
+}
+
+export interface OnboardingStep {
+  id: "upload_cv" | "add_job" | "first_session" | "first_report";
+  title: string;
+  done: boolean;
+  href: string;
 }
 
 export interface HomeSummaryPayload {
   cards: HomeSummaryCard[];
+  /** Getting-started checklist; shown until every step is done. */
+  onboarding?: OnboardingStep[];
 }
 
 // ---- Cover letters ----

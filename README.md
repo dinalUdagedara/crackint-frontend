@@ -46,3 +46,26 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+## Checks and end-to-end tests
+
+```bash
+npx eslint .          # errors fail CI; warnings are reported
+npm run typecheck
+npm run build
+```
+
+End-to-end (Playwright, `e2e/`): start the backend with deterministic AI replies
+(`LLM_FAKE_RESPONSES=true OPENAI_API_KEY=fake SESSION_QA_AGENT_ENABLED=true`, migrated database),
+then:
+
+```bash
+npx playwright install chromium        # once (or PW_CHANNEL=chrome to use installed Chrome)
+npm run build && npm run test:e2e      # starts `next start` on :3000
+# or against a running frontend:
+E2E_BASE_URL=http://localhost:3000 npm run test:e2e
+```
+
+CI (`.github/workflows/ci.yml`) runs lint, typecheck and build, and the end-to-end test against
+the backend repo (same target branch) with a Postgres service.

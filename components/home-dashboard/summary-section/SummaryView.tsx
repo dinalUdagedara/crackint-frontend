@@ -7,9 +7,11 @@ import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { getHomeSummary } from "@/services/readiness.service"
+import OnboardingChecklist from "./OnboardingChecklist"
 import SummaryCard from "./SummaryCard"
 
-const SKELETON_CARD_COUNT = 3
+const SKELETON_CARD_COUNT = 4
+const GRID = "grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 min-h-0 min-w-0"
 
 function SummarySkeletonCard() {
   return (
@@ -55,7 +57,7 @@ export default function SummaryView() {
 
   if (isPending) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3 min-h-0 min-w-0">
+      <div className={GRID}>
         {Array.from({ length: SKELETON_CARD_COUNT }, (_, i) => (
           <div key={i} className="min-w-0">
             <SummarySkeletonCard />
@@ -68,12 +70,15 @@ export default function SummaryView() {
   const cards = data?.cards ?? []
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3 min-h-0 min-w-0">
-      {cards.map((summary, index) => (
-        <div key={summary.id ?? `${summary.title}-${index}`} className="min-w-0">
-          <SummaryCard summary={summary} />
-        </div>
-      ))}
+    <div className="flex flex-col gap-3 sm:gap-4">
+      <OnboardingChecklist steps={data?.onboarding ?? []} />
+      <div className={GRID}>
+        {cards.map((summary, index) => (
+          <div key={summary.id ?? `${summary.title}-${index}`} className="min-w-0">
+            <SummaryCard summary={summary} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

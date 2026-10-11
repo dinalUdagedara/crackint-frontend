@@ -579,24 +579,24 @@ export function SessionChatView() {
                 </div>
                 {session.summary && (
                   <div className="mt-4 grid gap-4 text-xs text-muted-foreground md:grid-cols-2">
-                    {typeof (session.summary as any).strengths === "string" && (
+                    {typeof (session.summary as Record<string, unknown>).strengths === "string" && (
                       <div className="rounded-lg bg-background/60 p-3">
                         <p className="text-[11px] font-semibold text-foreground">
                           Strengths
                         </p>
                         <p className="mt-1 leading-relaxed">
-                          {(session.summary as any).strengths as string}
+                          {(session.summary as Record<string, unknown>).strengths as string}
                         </p>
                       </div>
                     )}
-                    {typeof (session.summary as any).areas_for_improvement ===
+                    {typeof (session.summary as Record<string, unknown>).areas_for_improvement ===
                       "string" && (
                         <div className="rounded-lg bg-background/60 p-3">
                           <p className="text-[11px] font-semibold text-foreground">
                             Areas for improvement
                           </p>
                           <p className="mt-1 leading-relaxed">
-                            {(session.summary as any).areas_for_improvement as string}
+                            {(session.summary as Record<string, unknown>).areas_for_improvement as string}
                           </p>
                         </div>
                       )}
@@ -630,7 +630,7 @@ export function SessionChatView() {
       <ChatInputView
         onSend={handleSendMessage}
         disabled={isStreaming}
-        mode={session.mode as any}
+        mode={session.mode}
         onModeChange={(newMode) => updateModeMutation.mutate(newMode)}
         disableTargeted={!(session.job_posting_id && session.resume_id)}
         difficulty={session.mode !== "TUTOR_CHAT" ? difficulty : null}
@@ -642,7 +642,7 @@ export function SessionChatView() {
 
       {session && (
         <EditSessionDialog
-          session={session as any}
+          session={session}
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           onSave={(updatedSession) => {

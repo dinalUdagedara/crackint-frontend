@@ -27,7 +27,8 @@ export function ProfileView() {
   const accessToken = session?.accessToken as string | undefined
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [name, setName] = useState("")
+  // Only the user's edits live in state; otherwise show the saved name.
+  const [draftName, setDraftName] = useState<string | null>(null)
 
   const meQuery = useQuery({
     queryKey: ["auth", "me"],
@@ -37,13 +38,7 @@ export function ProfileView() {
 
   const user = meQuery.data?.payload
 
-  useEffect(() => {
-    if (user) {
-      setName(user.name ?? "")
-    } else if (session?.user) {
-      setName(session.user.name ?? "")
-    }
-  }, [user, session?.user])
+  const name = draftName ?? user?.name ?? session?.user?.name ?? ""
 
   const emailDisplay = user?.email ?? session?.user?.email ?? ""
   const avatarUrl =
@@ -77,6 +72,7 @@ export function ProfileView() {
         profileImageUrl: res.payload.profile_image_url ?? null,
       })
       void queryClient.invalidateQueries({ queryKey: ["auth", "me"] })
+      setDraftName(null)
       toast.success("Profile updated.")
     },
     onError: (err: Error) => {
@@ -261,7 +257,7 @@ export function ProfileView() {
                     type="text"
                     autoComplete="name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => setDraftName(e.target.value)}
                     disabled={saveMutation.isPending}
                     className="rounded-xl"
                   />

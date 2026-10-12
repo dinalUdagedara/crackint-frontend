@@ -14,10 +14,23 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import { updateSession } from "@/services/sessions.service"
-import type { PrepSession, PrepSessionMode } from "@/types/api.types"
+import type { PrepSession, PrepSessionUpdate, RoleLevel } from "@/types/api.types"
+
+const ROLE_LEVEL_OPTIONS: { value: RoleLevel; label: string }[] = [
+  { value: "INTERN", label: "Intern" },
+  { value: "ASE", label: "Associate / mid-level" },
+  { value: "SSE", label: "Senior" },
+]
 
 interface EditSessionDialogProps {
   session: PrepSession
@@ -43,11 +56,15 @@ export function EditSessionDialog({
   const axiosAuth = useAxiosAuth()
   const queryClient = useQueryClient()
   
-  const [title, setTitle] = useState(() => getSessionTitle(session))
+  const [initialTitle] = useState(() => getSessionTitle(session))
+  const [title, setTitle] = useState(initialTitle)
+  const [roleLevel, setRoleLevel] = useState<RoleLevel | undefined>(
+    session.role_level ?? undefined
+  )
   const [error, setError] = useState<string | null>(null)
 
   const updateMutation = useMutation({
-    mutationFn: async (payload: { title?: string; mode?: PrepSessionMode }) => {
+    mutationFn: async (payload: PrepSessionUpdate) => {
       const res = await updateSession(axiosAuth, session.id, payload)
       if (!res.success || !res.payload) {
         throw new Error(res.message || "Failed to update session.")
@@ -74,8 +91,21 @@ export function EditSessionDialog({
       setError("Title cannot be empty.")
       return
     }
-    updateMutation.mutate({ title: trimmed })
-  }, [title, updateMutation])
+    // Only send what changed: re-sending the displayed fallback title ("MODE • STATUS")
+    // would overwrite a title generated on the server since this page loaded.
+    const payload: PrepSessionUpdate = {}
+    if (trimmed !== initialTitle) {
+      payload.title = trimmed
+    }
+    if (roleLevel && roleLevel !== session.role_level) {
+      payload.role_level = roleLevel
+    }
+    if (Object.keys(payload).length === 0) {
+      onOpenChange(false)
+      return
+    }
+    updateMutation.mutate(payload)
+  }, [title, initialTitle, roleLevel, session.role_level, updateMutation, onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,7 +113,7 @@ export function EditSessionDialog({
         <DialogHeader>
           <DialogTitle>Edit Session</DialogTitle>
           <DialogDescription>
-            Change the title of this preparation session.
+            Change the title or the interview level of this session.
           </DialogDescription>
         </DialogHeader>
 
@@ -102,6 +132,28 @@ export function EditSessionDialog({
                 }
               }}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="role-level">Interview level</Label>
+            <Select
+              value={roleLevel}
+              onValueChange={(value) => setRoleLevel(value as RoleLevel)}
+            >
+              <SelectTrigger id="role-level" className="w-full">
+                <SelectValue placeholder="Auto (from the job posting)" />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLE_LEVEL_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Sets how deep the questions go. Difficulty also adapts to your scores.
+            </p>
           </div>
 
           {error && (

@@ -2,9 +2,12 @@
 
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { MessageCircle, ShieldAlert, Sparkles } from "lucide-react"
-import type { HomeSummaryCard } from "@/types/api.types"
-import type { Summary } from "./summaries-hardcoded"
+import { useState } from "react"
+import { Loader2, MessageCircle, ShieldAlert, Sparkles, Target } from "lucide-react"
+import { toast } from "sonner"
+import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
+import { createSession } from "@/services/sessions.service"
+import type { HomeSummaryCard, HomeSummaryCardItem } from "@/types/api.types"
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,13 +21,14 @@ const iconMap = {
   messages: MessageCircle,
   sparkles: Sparkles,
   shield: ShieldAlert,
+  target: Target,
 }
 
 const MAX_ITEMS_PER_CARD = 3
 const MAX_TITLE_LENGTH = 35
 
 type SummaryCardProps = {
-  summary: Summary
+  summary: HomeSummaryCard
   className?: string
   maxItems?: number
 }
@@ -37,6 +41,12 @@ const EMPTY_STATE_CONFIG: Record<
     title: "No sessions yet",
     description: "Start your first practice above to begin the journey.",
     actionLabel: "New Session",
+    href: "/sessions",
+  },
+  practice_next: {
+    title: "Nothing to practice yet",
+    description: "Answer a few questions and we'll keep track of topics worth revisiting.",
+    actionLabel: "Start practicing",
     href: "/sessions",
   },
   refine_cv: {
@@ -53,13 +63,11 @@ const EMPTY_STATE_CONFIG: Record<
   },
 }
 
-function getEmptyConfig(summary: Summary) {
-  const id = (summary as HomeSummaryCard).id
+function getEmptyConfig(summary: HomeSummaryCard) {
+  const id = summary.id
   if (id && id in EMPTY_STATE_CONFIG) return EMPTY_STATE_CONFIG[id]
   return EMPTY_STATE_CONFIG.readiness_tracker
 }
-
-type ItemWithAction = Summary["items"][number] & { action_type?: string | null }
 
 export default function SummaryCard({
   summary,
@@ -69,22 +77,17 @@ export default function SummaryCard({
   const Icon = iconMap[summary.icon]
   const router = useRouter()
   const allItems = summary.items
-  const listItems = allItems.filter(
-    (item) => (item as ItemWithAction).action_type == null
-  )
-  const ctaItems = allItems.filter(
-    (item) => (item as ItemWithAction).action_type != null
-  )
+  const axiosAuth = useAxiosAuth()
+  const [startingTopic, setStartingTopic] = useState<string | null>(null)
+  const isListItem = (item: HomeSummaryCardItem) =>
+    item.action_type == null || item.action_type === "start_focus_session"
+  const listItems = allItems.filter(isListItem)
+  const ctaItems = allItems.filter((item) => !isListItem(item))
   const displayListItems = listItems.slice(0, maxItems)
-  const totalItemCount = allItems.length
-  const showEmptyState = totalItemCount < 3
   const isEmpty = displayListItems.length === 0 && ctaItems.length === 0
-  const singleCtaOnly =
-    !showEmptyState &&
-    displayListItems.length === 0 &&
-    ctaItems.length === 1
+  const singleCtaOnly = displayListItems.length === 0 && ctaItems.length === 1
 
-  function resolveHref(item: Summary["items"][number]): string | undefined {
+  function resolveHref(item: HomeSummaryCardItem): string | undefined {
     if (item.href) return item.href
     if (item.session_id) return `/sessions/${item.session_id}`
     if (item.resume_id) return `/resumes/${item.resume_id}`
@@ -92,7 +95,30 @@ export default function SummaryCard({
     return undefined
   }
 
-  function handleItemClick(item: Summary["items"][number]) {
+  async function startFocusSession(topic: string) {
+    if (startingTopic) return
+    setStartingTopic(topic)
+    try {
+      const res = await createSession(axiosAuth, {
+        user_id: null,
+        resume_id: null,
+        job_posting_id: null,
+        mode: "QUICK_PRACTICE",
+        focus_topics: [topic],
+      })
+      if (!res.success || !res.payload) throw new Error(res.message || "Could not start a session.")
+      router.push(`/sessions/${res.payload.id}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start a session.")
+      setStartingTopic(null)
+    }
+  }
+
+  function handleItemClick(item: HomeSummaryCardItem) {
+    if (item.action_type === "start_focus_session" && item.topic) {
+      void startFocusSession(item.topic)
+      return
+    }
     const href = resolveHref(item)
     if (href) router.push(href)
   }
@@ -142,7 +168,7 @@ export default function SummaryCard({
         <h2 className="min-w-0 truncate text-base font-semibold">{summary.title}</h2>
       </div>
 
-      {showEmptyState || isEmpty ? (
+      {isEmpty ? (
         <div className="flex min-h-[120px] flex-1 flex-col justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 px-3 py-4 text-center">
           <p className="text-sm font-medium text-foreground">{emptyConfig.title}</p>
           <p className="text-xs text-muted-foreground wrap-break-word">{emptyConfig.description}</p>
@@ -167,8 +193,17 @@ export default function SummaryCard({
                   type="button"
                   className="w-full cursor-pointer rounded-lg border border-border/50 bg-muted/60 px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted hover:border-border"
                   onClick={() => handleItemClick(item)}
+                  disabled={startingTopic != null}
                 >
-                  {renderItemTitle(item.title)}
+                  <span className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1">{renderItemTitle(item.title)}</span>
+                    {startingTopic != null && startingTopic === item.topic && (
+                      <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+                    )}
+                  </span>
+                  {item.description && (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{item.description}</span>
+                  )}
                 </button>
               </li>
             ))}

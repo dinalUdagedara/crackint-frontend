@@ -89,6 +89,35 @@ export interface JobPosting {
 
 export type JobPostingListPayload = JobPosting[];
 
+/** One day in GET /job-postings/{id}/prep-plan. */
+export interface PrepPlanTask {
+  /** Calendar date (YYYY-MM-DD). */
+  date: string;
+  day_index: number;
+  kind: "skill_gap" | "weak_topic" | "behavioral" | "practice" | "mock_interview" | "day_of" | "deadline";
+  title: string;
+  description: string;
+  minutes: number;
+  focus_topics: string[];
+  mode: "TARGETED" | "QUICK_PRACTICE";
+  done: boolean;
+  is_today: boolean;
+}
+
+/** GET /job-postings/{id}/prep-plan: recomputed on every request. */
+export interface PrepPlan {
+  job_posting_id: string;
+  resume_id: string | null;
+  target_date: string | null;
+  target_type: "interview" | "deadline" | null;
+  days_left: number | null;
+  avg_score: number | null;
+  missing_skills: string[];
+  weak_topics: string[];
+  /** Empty when the job has no upcoming interview or deadline. */
+  tasks: PrepPlanTask[];
+}
+
 /** Item from GET /job-postings/near-deadline (deadline or interview in next N days). */
 export interface NearDeadlineItem {
   job: JobPosting;
@@ -138,7 +167,7 @@ export interface JobPostingUpdate {
 
 // ---- Prep sessions & messages ----
 
-export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT";
+export type PrepSessionMode = "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT" | "VOICE_MOCK";
 
 export type PrepSessionStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
 
@@ -154,6 +183,9 @@ export interface PrepSession {
   job_posting_id: string | null;
   mode: PrepSessionMode;
   status: PrepSessionStatus;
+  role_level?: RoleLevel | null;
+  /** Topics this session prioritizes (e.g. weak topics carried over from a report). */
+  focus_topics?: string[];
   readiness_score: number | null;
   summary: PrepSessionSummary | null;
   created_at: string;
@@ -167,11 +199,15 @@ export interface PrepSessionCreate {
   resume_id: string | null;
   job_posting_id: string | null;
   mode: PrepSessionMode;
+  /** Omit to infer from the job posting. */
+  role_level?: RoleLevel;
+  focus_topics?: string[];
 }
 
 export interface PrepSessionUpdate {
   title?: string;
   mode?: PrepSessionMode;
+  role_level?: RoleLevel;
 }
 
 export type MessageSender = "USER" | "ASSISTANT";
@@ -211,7 +247,7 @@ export interface PrepSessionWithMessages extends PrepSession {
 
 // ---- Session Q&A (LLM) ----
 
-/** Role level for next-question (optional in body). */
+/** Seniority the interview questions target (session role_level; next-question override). */
 export type RoleLevel = "INTERN" | "ASE" | "SSE" | "OTHER";
 
 /** Override requested difficulty when a next question is generated (next-question, chat, send). */
@@ -252,6 +288,67 @@ export interface SendReplyPayload {
   dimension_tags: string[] | null;
   message_id: string | null;
   redirect: boolean;
+}
+
+// ---- End-of-session report ----
+
+export interface StarBreakdown {
+  situation: boolean;
+  task: boolean;
+  action: boolean;
+  result: boolean;
+  note?: string | null;
+}
+
+/** How a spoken answer was delivered (voice mock interviews). */
+export interface DeliveryInfo {
+  speaking_seconds: number | null;
+  word_count: number | null;
+  wpm: number | null;
+  pace: "slow" | "good" | "fast" | null;
+  filler_count: number;
+  fillers: Record<string, number>;
+}
+
+export interface DeliverySummary {
+  spoken_answers: number;
+  average_wpm: number | null;
+  pace: "slow" | "good" | "fast" | null;
+  total_fillers: number;
+  top_fillers: Record<string, number>;
+}
+
+export interface SessionReportItem {
+  index: number;
+  question_message_id: string;
+  question: string;
+  answer: string;
+  feedback: string;
+  score: number | null;
+  difficulty: string | null;
+  question_type: string | null;
+  dimension_tags: string[];
+  topic: string | null;
+  model_answer: string | null;
+  /** Behavioral questions only. */
+  star: StarBreakdown | null;
+  /** Spoken answers only. */
+  delivery?: DeliveryInfo | null;
+}
+
+export interface SessionReport {
+  generated_at: string;
+  /** "basic" when the AI was unavailable: no model answers or STAR breakdowns. */
+  generated_by: "llm" | "basic";
+  average_score: number | null;
+  questions_answered: number;
+  questions_skipped: number;
+  strengths: string[];
+  weak_topics: string[];
+  summary: string | null;
+  /** Present when the session had spoken answers (voice mock). */
+  delivery?: DeliverySummary | null;
+  items: SessionReportItem[];
 }
 
 export interface ChatTurnPayload {
@@ -390,24 +487,35 @@ export interface ReadinessTrendItem {
 
 export interface HomeSummaryCardItem {
   title: string;
-  description?: string;
   href?: string;
   session_id?: string;
   resume_id?: string;
   job_posting_id?: string;
-  /** e.g. "open_cv" | "start_session" when the item is a primary CTA with no real data yet */
+  /** e.g. "open_cv" | "start_session" when the item is a primary CTA with no real data yet;
+   *  "start_focus_session" for Practice Next items (start a session focused on `topic`). */
   action_type?: string | null;
+  topic?: string | null;
+  description?: string | null;
 }
 
 export interface HomeSummaryCard {
   id?: string;
   title: string;
-  icon: "messages" | "sparkles" | "shield";
+  icon: "messages" | "sparkles" | "shield" | "target";
   items: HomeSummaryCardItem[];
+}
+
+export interface OnboardingStep {
+  id: "upload_cv" | "add_job" | "first_session" | "first_report";
+  title: string;
+  done: boolean;
+  href: string;
 }
 
 export interface HomeSummaryPayload {
   cards: HomeSummaryCard[];
+  /** Getting-started checklist; shown until every step is done. */
+  onboarding?: OnboardingStep[];
 }
 
 // ---- Cover letters ----

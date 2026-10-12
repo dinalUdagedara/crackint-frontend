@@ -85,14 +85,14 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
 
     if (selectedFile) {
       performExtraction(() =>
-        extractJobFromFile(selectedFile)
+        extractJobFromFile(axiosAuth, selectedFile)
       )
     } else if (trimmed) {
       performExtraction(() =>
-        extractJobFromText(trimmed)
+        extractJobFromText(axiosAuth, trimmed)
       )
     }
-  }, [selectedFile, pasteText, canExtract, performExtraction])
+  }, [selectedFile, pasteText, canExtract, performExtraction, axiosAuth])
 
   const handleReplaceJobPoster = useCallback(() => {
     setResult(null)
@@ -109,7 +109,7 @@ export default function JobUploadView({ userId: _userId }: { userId?: string | n
       const location =
         result.entities?.LOCATION?.[0] ??
         // Fallback if extractor uses CITY instead of LOCATION
-        (result as any).entities?.CITY?.[0] ??
+        result.entities?.CITY?.[0] ??
         null
 
       const response = await createJobPosting(axiosAuth, {

@@ -57,7 +57,7 @@ export function ResumeDetail() {
       if (sessionStatus === "unauthenticated") setIsLoading(false)
       return
     }
-    let isMounted = true
+    const isMounted = true
 
     async function fetchResume() {
       setIsLoading(true)

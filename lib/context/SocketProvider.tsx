@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
+import { useSession } from 'next-auth/react';
 import useSocketIO from '@/lib/hooks/useSocketIO';
 import { Socket } from 'socket.io-client';
 
@@ -27,8 +28,12 @@ interface SocketProviderProps {
 }
 
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
+  const { data: session } = useSession();
   // Hardcode the default backend URL if env is not provided (standard local is 8000)
-  const socketIO = useSocketIO(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+  const socketIO = useSocketIO(
+    process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    session?.accessToken
+  );
 
   return (
     <SocketContext.Provider value={socketIO}>

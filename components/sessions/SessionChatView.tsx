@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useAxiosAuth } from "@/lib/hooks/useAxiosAuth"
 import Link from "next/link"
@@ -14,18 +14,22 @@ import {
   Target,
   FileText,
   BarChart2,
+  Flag,
+  ClipboardCheck,
+  Mic,
 } from "lucide-react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { getSessionWithMessages, postChatTurn } from "@/services/sessions.service"
+import { completeSession, getSessionWithMessages, streamChatTurn } from "@/services/sessions.service"
 import { generateCoverLetter } from "@/services/cover-letter.service"
 import { getResume } from "@/services/resume-uploader.service"
 import { getJobPosting } from "@/services/job-postings.service"
-import type { Message, PrepSessionWithMessages } from "@/types/api.types"
+import type { Message, PrepSessionMode, PrepSessionWithMessages } from "@/types/api.types"
 import { Button } from "@/components/ui/button"
 import ChatInputView from "@/components/home-dashboard/chat-input/ChatInputView"
 import { EditSessionDialog } from "./EditSessionDialog"
 import { SessionMessagesArea } from "./SessionMessagesArea"
+import { VoiceInterviewPanel } from "./VoiceInterviewPanel"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +64,15 @@ export function SessionChatView() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<Message | null>(null)
   const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
+  const router = useRouter()
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
+  // Streaming turn: assistant text shown as it is generated, replaced by stored messages.
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [draft, setDraft] = useState<{ feedback: string; question: string } | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   const { data: resumeData, isLoading: isResumeLoading } = useQuery({
     queryKey: ["resume", session?.resume_id],
@@ -78,7 +90,7 @@ export function SessionChatView() {
   const jobTitle = jobData?.payload?.entities?.JOB_TITLE?.[0] || (session?.job_posting_id ? session.job_posting_id.slice(0, 8) + "..." : "None")
 
   const updateModeMutation = useMutation({
-    mutationFn: async (newMode: "TARGETED" | "QUICK_PRACTICE" | "TUTOR_CHAT") => {
+    mutationFn: async (newMode: PrepSessionMode) => {
       const { updateSession } = await import("@/services/sessions.service")
       const res = await updateSession(axiosAuth, sessionId as string, {
         mode: newMode,
@@ -142,10 +154,10 @@ export function SessionChatView() {
   }, [session?.messages?.length])
 
   useEffect(() => {
-    if (messagesEndRef.current && pendingMessage) {
+    if (messagesEndRef.current && (pendingMessage || draft)) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [pendingMessage])
+  }, [pendingMessage, draft?.feedback.length, draft?.question.length, draft])
 
   async function refreshSession() {
     if (!sessionId) return
@@ -163,6 +175,18 @@ export function SessionChatView() {
 
   // Advanced mode is now a small toggle in the input; when enabled,
   // we send prefer_difficulty=\"hard\" on the next chat turn.
+
+  async function handleEndSession() {
+    if (!sessionId || isCompleting || isStreaming) return
+    setIsCompleting(true)
+    try {
+      await completeSession(axiosAuth, sessionId)
+      router.push(`/sessions/${sessionId}/report`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not end the session.")
+      setIsCompleting(false)
+    }
+  }
 
   async function handleGenerateCoverLetter() {
     if (!sessionId || isGeneratingCoverLetter) return
@@ -189,55 +213,98 @@ export function SessionChatView() {
     }
   }
 
-  const chatMutation = useMutation({
-    mutationFn: async (args: { content: string; preferDifficulty?: "easy" | "medium" | "hard" }) => {
-      const { content, preferDifficulty } = args
-      if (!sessionId) {
-        throw new Error("Session not found")
-      }
-      const trimmed = content.trim()
-      if (!trimmed) {
-        throw new Error("Please enter a message to send.")
-      }
-
-      const res = await postChatTurn(
-        axiosAuth,
+  /** Streams one chat turn; resolves with the messages the server stored for it. */
+  async function sendStreamingTurn(
+    content: string,
+    preferDifficulty?: "easy" | "medium" | "hard",
+    speakingSeconds?: number
+  ): Promise<Message[]> {
+    const stored: Message[] = []
+    if (!sessionId) return stored
+    const controller = new AbortController()
+    abortRef.current = controller
+    setIsStreaming(true)
+    setDraft({ feedback: "", question: "" })
+    let failed = false
+    try {
+      await streamChatTurn(
+        authSession?.accessToken,
         sessionId,
-        trimmed,
-        preferDifficulty ? { prefer_difficulty: preferDifficulty } : undefined,
+        content,
+        (ev) => {
+          switch (ev.event) {
+            case "message": {
+              const msg: Message = {
+                ...ev.data.message,
+                metadata: ev.data.message.metadata ?? ev.data.message.meta ?? {},
+              }
+              stored.push(msg)
+              if (msg.sender === "USER") setPendingMessage(null)
+              setSession((prev) =>
+                prev ? { ...prev, messages: [...prev.messages, msg] } : prev
+              )
+              setDraft((d) =>
+                d && msg.type === "QUESTION"
+                  ? { ...d, question: "" }
+                  : d && msg.type === "FEEDBACK"
+                    ? { ...d, feedback: "" }
+                    : d
+              )
+              break
+            }
+            case "feedback.delta":
+              setDraft((d) => ({
+                feedback: (d?.feedback ?? "") + ev.data.text,
+                question: d?.question ?? "",
+              }))
+              break
+            case "question.delta":
+              setDraft((d) => ({
+                feedback: d?.feedback ?? "",
+                question: (d?.question ?? "") + ev.data.text,
+              }))
+              break
+            case "error":
+              failed = true
+              toast.error(ev.data.detail || "Failed to get a reply.")
+              break
+          }
+        },
+        { prefer_difficulty: preferDifficulty, speaking_seconds: speakingSeconds, signal: controller.signal }
       )
-      if (!res.success || !res.payload) {
-        throw new Error(res.message || "Failed to send message.")
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        failed = true
+        toast.error(err instanceof Error ? err.message : "Failed to send message.")
       }
-      return res.payload
-    },
-    onSuccess: async (payload) => {
-      // Optimistically append new messages if we already have a session in memory,
-      // otherwise fall back to full refresh.
-      if (session && payload?.new_messages?.length) {
-        // Backend v2 returns message meta as "meta"; normalize to "metadata" for UI.
-        const normalized = payload.new_messages.map((msg) => ({
-          ...msg,
-          metadata: msg.metadata ?? msg.meta ?? {},
-        }))
-        setSession({
-          ...session,
-          messages: [...session.messages, ...normalized],
-        })
-      } else {
-        await refreshSession()
-      }
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || "Failed to send message.")
-    },
-    onSettled: () => {
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null
+      setIsStreaming(false)
+      setDraft(null)
       setPendingMessage(null)
-    },
-  })
+      // Resync with what the server stored if the turn did not finish cleanly.
+      if (failed) await refreshSession()
+    }
+    return stored
+  }
+
+  async function handleVoiceAnswer(text: string, speakingSeconds?: number): Promise<Message[]> {
+    if (!sessionId) return []
+    setPendingMessage({
+      id: `temp-${Date.now()}`,
+      session_id: sessionId,
+      sender: "USER",
+      type: "ANSWER",
+      content: text,
+      metadata: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    return sendStreamingTurn(text, undefined, speakingSeconds)
+  }
 
   async function handleSendMessage(message: string) {
-    if (!sessionId || chatMutation.isPending) return
+    if (!sessionId || isStreaming) return
 
     const trimmed = message.trim()
     if (!trimmed) {
@@ -257,11 +324,10 @@ export function SessionChatView() {
     }
 
     setPendingMessage(tempMessage)
-    chatMutation.mutate({
-      content: trimmed,
-      preferDifficulty:
-        session && session.mode === "TUTOR_CHAT" ? undefined : difficulty ?? undefined,
-    })
+    void sendStreamingTurn(
+      trimmed,
+      session && session.mode === "TUTOR_CHAT" ? undefined : difficulty ?? undefined
+    )
   }
 
   if (isLoading && !session) {
@@ -314,6 +380,8 @@ export function SessionChatView() {
                       >
                         {session.mode === "TUTOR_CHAT" ? (
                           <MessageSquare className="h-3 w-3" />
+                        ) : session.mode === "VOICE_MOCK" ? (
+                          <Mic className="h-3 w-3" />
                         ) : (
                           <Target className="h-3 w-3" />
                         )}
@@ -322,7 +390,9 @@ export function SessionChatView() {
                             ? "Tutor Chat"
                             : session.mode === "QUICK_PRACTICE"
                               ? "Quick Practice"
-                              : "Targeted"}
+                              : session.mode === "VOICE_MOCK"
+                                ? "Voice Mock"
+                                : "Targeted"}
                         </span>
                         <ChevronDown className="h-3 w-3" />
                       </Button>
@@ -343,10 +413,17 @@ export function SessionChatView() {
                               : "QUICK_PRACTICE",
                           )
                         }
-                        className={session.mode !== "TUTOR_CHAT" ? "bg-muted" : ""}
+                        className={session.mode === "TARGETED" || session.mode === "QUICK_PRACTICE" ? "bg-muted" : ""}
                       >
                         <Target className="mr-2 h-4 w-4" />
                         Interview Mode
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => updateModeMutation.mutate("VOICE_MOCK")}
+                        className={session.mode === "VOICE_MOCK" ? "bg-muted" : ""}
+                      >
+                        <Mic className="mr-2 h-4 w-4" />
+                        Voice Mock Interview
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -446,6 +523,27 @@ export function SessionChatView() {
                     </span>
                   </div>
                   <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {session.status === "COMPLETED" ? (
+                      <Button variant="outline" size="xs" className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]" asChild>
+                        <Link href={`/sessions/${session.id}/report`}>
+                          <ClipboardCheck className="h-3 w-3" />
+                          <span>View report</span>
+                        </Link>
+                      </Button>
+                    ) : (
+                      session.mode !== "TUTOR_CHAT" && (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]"
+                          onClick={handleEndSession}
+                          disabled={isCompleting || isStreaming}
+                        >
+                          {isCompleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Flag className="h-3 w-3" />}
+                          <span>{isCompleting ? "Building report…" : "End session"}</span>
+                        </Button>
+                      )
+                    )}
                     {session.resume_id && session.job_posting_id && (
                       <Button variant="outline" size="xs" className="h-7 gap-1 rounded-full border-border/70 bg-background/60 px-2 text-[11px]" asChild>
                         <Link
@@ -481,24 +579,24 @@ export function SessionChatView() {
                 </div>
                 {session.summary && (
                   <div className="mt-4 grid gap-4 text-xs text-muted-foreground md:grid-cols-2">
-                    {typeof (session.summary as any).strengths === "string" && (
+                    {typeof (session.summary as Record<string, unknown>).strengths === "string" && (
                       <div className="rounded-lg bg-background/60 p-3">
                         <p className="text-[11px] font-semibold text-foreground">
                           Strengths
                         </p>
                         <p className="mt-1 leading-relaxed">
-                          {(session.summary as any).strengths as string}
+                          {(session.summary as Record<string, unknown>).strengths as string}
                         </p>
                       </div>
                     )}
-                    {typeof (session.summary as any).areas_for_improvement ===
+                    {typeof (session.summary as Record<string, unknown>).areas_for_improvement ===
                       "string" && (
                         <div className="rounded-lg bg-background/60 p-3">
                           <p className="text-[11px] font-semibold text-foreground">
                             Areas for improvement
                           </p>
                           <p className="mt-1 leading-relaxed">
-                            {(session.summary as any).areas_for_improvement as string}
+                            {(session.summary as Record<string, unknown>).areas_for_improvement as string}
                           </p>
                         </div>
                       )}
@@ -514,15 +612,25 @@ export function SessionChatView() {
         session={session}
         messagesEndRef={messagesEndRef}
         pendingMessage={pendingMessage}
+        draft={draft}
+        isStreaming={isStreaming}
         userAvatarUrl={authSession?.user?.profileImageUrl}
         userName={authSession?.user?.name}
         userEmail={authSession?.user?.email}
       />
 
+      {session.mode === "VOICE_MOCK" && session.status !== "COMPLETED" ? (
+        <VoiceInterviewPanel
+          lastQuestion={[...session.messages].reverse().find((m) => m.type === "QUESTION")?.content ?? null}
+          onAnswer={handleVoiceAnswer}
+          onEnd={() => void handleEndSession()}
+          accessToken={authSession?.accessToken}
+        />
+      ) : (
       <ChatInputView
         onSend={handleSendMessage}
-        disabled={chatMutation.isPending}
-        mode={session.mode as any}
+        disabled={isStreaming}
+        mode={session.mode}
         onModeChange={(newMode) => updateModeMutation.mutate(newMode)}
         disableTargeted={!(session.job_posting_id && session.resume_id)}
         difficulty={session.mode !== "TUTOR_CHAT" ? difficulty : null}
@@ -530,10 +638,11 @@ export function SessionChatView() {
           session.mode !== "TUTOR_CHAT" ? setDifficulty : undefined
         }
       />
+      )}
 
       {session && (
         <EditSessionDialog
-          session={session as any}
+          session={session}
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           onSave={(updatedSession) => {

@@ -69,9 +69,8 @@ export function ReadinessTrendChart({ items }: ReadinessTrendChartProps) {
 
   const points = useMemo(() => {
     if (allPoints.length === 0) return []
-    const referenceDate = new Date(
-      allPoints[allPoints.length - 1]?.date ?? Date.now()
-    )
+    // Non-empty here: the newest point is the reference.
+    const referenceDate = new Date(allPoints[allPoints.length - 1].date)
     const msBack =
       timeRange === "12h"
         ? 12 * 60 * 60 * 1000
